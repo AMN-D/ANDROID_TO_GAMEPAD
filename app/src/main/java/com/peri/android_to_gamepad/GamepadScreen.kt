@@ -39,7 +39,7 @@ fun GamepadScreen(client: GamepadClient, onBack: () -> Unit) {
         val screenW = maxWidth
         val screenH = maxHeight
 
-        // Bottom-left quadrant is entirely the left joystick's touch zone.
+        // Left half is the left joystick's touch zone (Movement).
         JoystickZone(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -53,90 +53,257 @@ fun GamepadScreen(client: GamepadClient, onBack: () -> Unit) {
             }
         )
 
-        // Y - Elemental Burst
+        // Right half is the invisible Camera touch zone (Look around).
+        // Placed before the buttons in code so it sits BEHIND them.
+        CameraZone(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxWidth(0.5f)
+                .fillMaxHeight(),
+            onUpdate = { x, y ->
+                val mappedX = (x * 32767).toInt()
+                val mappedY = (y * 32767).toInt()
+                client.sendCommand("ABS_RX:$mappedX")
+                client.sendCommand("ABS_RY:$mappedY")
+            }
+        )
+
+        // --- UTILITY MENU BUTTONS ---
+
+        // Start (Paimon Menu) - Top Left
+        GamepadButton(
+            label = "St",
+            accentColor = Color.White,
+            diameter = 44.dp,
+            onDown = { client.sendCommand("BTN_START:1") },
+            onUp = { client.sendCommand("BTN_START:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.06f - 22.dp, y = screenH * 0.12f - 22.dp)
+        )
+
+        // Select (Chat/Map) - Top Left, next to Start
+        GamepadButton(
+            label = "Sel",
+            accentColor = Color.White,
+            diameter = 44.dp,
+            onDown = { client.sendCommand("BTN_SELECT:1") },
+            onUp = { client.sendCommand("BTN_SELECT:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.13f - 22.dp, y = screenH * 0.12f - 22.dp)
+        )
+
+        // LB (Shortcut Wheel) - Top Right (Inventory location)
+        GamepadButton(
+            label = "LB",
+            accentColor = Color.White,
+            diameter = 44.dp,
+            onDown = { client.sendCommand("BTN_TL:1") },
+            onUp = { client.sendCommand("BTN_TL:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.934f - 22.dp, y = screenH * 0.12f - 22.dp)
+        )
+
+        // --- CHARACTER SWITCHING (D-PAD MAPPED) ---
+
+        // Character 1 (D-Pad Up)
+        GamepadButton(
+            label = "1",
+            accentColor = Color.White,
+            diameter = 44.dp,
+            onDown = { client.sendCommand("ABS_HAT0Y:-1") },
+            onUp = { client.sendCommand("ABS_HAT0Y:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.72f - 22.dp, y = screenH * 0.38f - 22.dp)
+        )
+
+        // Character 2 (D-Pad Right)
+        GamepadButton(
+            label = "2",
+            accentColor = Color.White,
+            diameter = 44.dp,
+            onDown = { client.sendCommand("ABS_HAT0X:1") },
+            onUp = { client.sendCommand("ABS_HAT0X:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.79f - 22.dp, y = screenH * 0.38f - 22.dp)
+        )
+
+        // Character 3 (D-Pad Down)
+        GamepadButton(
+            label = "3",
+            accentColor = Color.White,
+            diameter = 44.dp,
+            onDown = { client.sendCommand("ABS_HAT0Y:1") },
+            onUp = { client.sendCommand("ABS_HAT0Y:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.86f - 22.dp, y = screenH * 0.38f - 22.dp)
+        )
+
+        // Character 4 (D-Pad Left)
+        GamepadButton(
+            label = "4",
+            accentColor = Color.White,
+            diameter = 44.dp,
+            onDown = { client.sendCommand("ABS_HAT0X:-1") },
+            onUp = { client.sendCommand("ABS_HAT0X:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.93f - 22.dp, y = screenH * 0.38f - 22.dp)
+        )
+
+        // --- MAIN ACTION BUTTONS ---
+
+        // 3RD LARGEST: Y - Elemental Burst
         GamepadButton(
             label = "Y",
             accentColor = Color(0xFFE5C51C),
-            diameter = 58.dp,
+            diameter = 56.dp,
             onDown = { client.sendCommand("BTN_NORTH:1") },
             onUp = { client.sendCommand("BTN_NORTH:0") },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = screenW * 0.644f - 29.dp, y = screenH * 0.897f - 29.dp)
+                .offset(x = screenW * 0.644f - 28.dp, y = screenH * 0.897f - 28.dp)
         )
 
-        // RT - Elemental Skill (was X)
+        // 2ND LARGEST: RT - Elemental Skill
         GamepadButton(
             label = "RT",
             accentColor = Color.White,
-            diameter = 58.dp,
+            diameter = 64.dp,
             onDown = { client.sendCommand("ABS_RZ:255") },
             onUp = { client.sendCommand("ABS_RZ:0") },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = screenW * 0.724f - 29.dp, y = screenH * 0.852f - 29.dp)
+                .offset(x = screenW * 0.724f - 32.dp, y = screenH * 0.852f - 32.dp)
         )
 
-        // B - Normal Attack (was RT)
+        // LARGEST: B - Normal Attack
         GamepadButton(
             label = "B",
             accentColor = Color(0xFFD7263D),
-            diameter = 76.dp,
+            diameter = 88.dp,
             onDown = { client.sendCommand("BTN_EAST:1") },
             onUp = { client.sendCommand("BTN_EAST:0") },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = screenW * 0.833f - 38.dp, y = screenH * 0.711f - 38.dp)
+                .offset(x = screenW * 0.833f - 44.dp, y = screenH * 0.711f - 44.dp)
         )
 
-        // LT - Switch Aiming Mode (was X position, nudged toward Y)
+        // SMALLEST: LT - Switch Aiming Mode
         GamepadButton(
             label = "LT",
             accentColor = Color.White,
-            diameter = 58.dp,
+            diameter = 44.dp,
             onDown = { client.sendCommand("ABS_Z:255") },
             onUp = { client.sendCommand("ABS_Z:0") },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = screenW * 0.684f - 29.dp, y = screenH * 0.730f - 29.dp)
+                .offset(x = screenW * 0.684f - 22.dp, y = screenH * 0.730f - 22.dp)
         )
 
-        // X - Pick Up / Interact (above LT, near where loot prompts appear)
+        // SMALLEST: X - Pick Up / Interact
         GamepadButton(
             label = "X",
             accentColor = Color(0xFF1B64E8),
-            diameter = 58.dp,
+            diameter = 44.dp,
             onDown = { client.sendCommand("BTN_WEST:1") },
             onUp = { client.sendCommand("BTN_WEST:0") },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = screenW * 0.684f - 29.dp, y = screenH * 0.550f - 29.dp)
+                .offset(x = screenW * 0.610f - 22.dp, y = screenH * 0.550f - 22.dp)
         )
 
-        // A - Jump
+        // 2ND LARGEST: A - Jump
         GamepadButton(
             label = "A",
             accentColor = Color(0xFF28A745),
-            diameter = 58.dp,
+            diameter = 64.dp,
             onDown = { client.sendCommand("BTN_SOUTH:1") },
             onUp = { client.sendCommand("BTN_SOUTH:0") },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = screenW * 0.934f - 29.dp, y = screenH * 0.594f - 29.dp)
+                .offset(x = screenW * 0.934f - 32.dp, y = screenH * 0.594f - 32.dp)
         )
 
-        // RB - Sprint
+        // 2ND LARGEST: RB - Sprint
         GamepadButton(
             label = "RB",
             accentColor = Color.White,
-            diameter = 58.dp,
+            diameter = 64.dp,
             onDown = { client.sendCommand("BTN_TR:1") },
             onUp = { client.sendCommand("BTN_TR:0") },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = screenW * 0.934f - 29.dp, y = screenH * 0.800f - 29.dp)
+                .offset(x = screenW * 0.934f - 32.dp, y = screenH * 0.800f - 32.dp)
         )
     }
+}
+
+// NEW: Completely invisible touch zone specifically tuned for camera movement
+@Composable
+fun CameraZone(
+    modifier: Modifier = Modifier,
+    onUpdate: (x: Float, y: Float) -> Unit
+) {
+    var zoneSize by remember { mutableStateOf(IntSize.Zero) }
+
+    Box(
+        modifier = modifier
+            .onSizeChanged { zoneSize = it }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val size = zoneSize
+                    if (size.width == 0 || size.height == 0) return@awaitEachGesture
+
+                    // Sensitivity: A shorter distance to reach max joystick tilt for faster swiping
+                    val maxDragPx = minOf(size.width, size.height) * 0.15f
+
+                    // requireUnconsumed = true ignores the touch if a button was pressed first
+                    val down = awaitFirstDown(requireUnconsumed = true)
+                    var startX = down.position.x
+                    var startY = down.position.y
+
+                    down.consume()
+                    onUpdate(0f, 0f)
+
+                    val pointerId = down.id
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                        if (!change.pressed) break
+
+                        var dx = change.position.x - startX
+                        var dy = change.position.y - startY
+                        val distance = hypot(dx, dy)
+
+                        // DYNAMIC ORIGIN: If you drag past max tilt, the origin follows your finger.
+                        // This makes it feel like a natural swipe-to-look camera rather than a physical stick!
+                        if (distance > maxDragPx && distance > 0) {
+                            val overage = distance - maxDragPx
+                            val ratio = overage / distance
+                            startX += dx * ratio
+                            startY += dy * ratio
+
+                            dx = change.position.x - startX
+                            dy = change.position.y - startY
+                        }
+
+                        val outX = (dx / maxDragPx).coerceIn(-1f, 1f)
+                        val outY = (dy / maxDragPx).coerceIn(-1f, 1f)
+
+                        onUpdate(outX, outY)
+                        change.consume()
+                    }
+
+                    onUpdate(0f, 0f)
+                }
+            }
+    )
 }
 
 @Composable
@@ -161,7 +328,7 @@ fun JoystickZone(
                     val thumbRadiusPx = baseRadiusPx * 0.42f
                     val maxDragPx = baseRadiusPx - thumbRadiusPx
 
-                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val down = awaitFirstDown(requireUnconsumed = true)
                     val clampedCenter = Offset(
                         x = down.position.x.coerceIn(baseRadiusPx, size.width - baseRadiusPx),
                         y = down.position.y.coerceIn(baseRadiusPx, size.height - baseRadiusPx)
@@ -238,61 +405,6 @@ fun JoystickZone(
 }
 
 @Composable
-fun Joystick(
-    onUpdate: (x: Float, y: Float) -> Unit,
-    modifier: Modifier = Modifier,
-    size: Dp = 150.dp
-) {
-    var thumbOffset by remember { mutableStateOf(Offset.Zero) }
-    val density = LocalDensity.current
-    val radiusPx = with(density) { (size / 2).toPx() }
-    val thumbRadiusPx = with(density) { 25.dp.toPx() }
-    val maxDragPx = radiusPx - thumbRadiusPx
-
-    fun updateFromRawPosition(rawX: Float, rawY: Float) {
-        val x = rawX - radiusPx
-        val y = rawY - radiusPx
-        val distance = hypot(x, y)
-        val clampedX = if (distance > maxDragPx) x * (maxDragPx / distance) else x
-        val clampedY = if (distance > maxDragPx) y * (maxDragPx / distance) else y
-        thumbOffset = Offset(clampedX, clampedY)
-        onUpdate(clampedX / maxDragPx, clampedY / maxDragPx)
-    }
-
-    Box(
-        modifier = modifier
-            .size(size)
-            .background(Color.DarkGray, CircleShape)
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    updateFromRawPosition(down.position.x, down.position.y)
-
-                    val pointerId = down.id
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == pointerId } ?: break
-                        if (!change.pressed) break
-                        updateFromRawPosition(change.position.x, change.position.y)
-                        change.consume()
-                    }
-
-                    thumbOffset = Offset.Zero
-                    onUpdate(0f, 0f)
-                }
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .offset { IntOffset(thumbOffset.x.roundToInt(), thumbOffset.y.roundToInt()) }
-                .size(50.dp)
-                .background(Color.LightGray, CircleShape)
-        )
-    }
-}
-
-@Composable
 fun GamepadButton(
     label: String,
     onDown: () -> Unit,
@@ -312,11 +424,13 @@ fun GamepadButton(
             .border(1.5.dp, accentColor.copy(alpha = borderAlpha), CircleShape)
             .pointerInput(Unit) {
                 awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume() // Consume the touch so the CameraZone underneath ignores it
                     pressed = true
                     onDown()
 
-                    waitForUpOrCancellation()
+                    val up = waitForUpOrCancellation()
+                    up?.consume()
 
                     pressed = false
                     onUp()
