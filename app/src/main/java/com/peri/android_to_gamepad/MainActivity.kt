@@ -16,14 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 
 class MainActivity : ComponentActivity() {
-
-    // Single shared client for the whole app lifecycle
     private val gamepadClient = GamepadClient()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
         setContent {
             MaterialTheme {
                 Surface(
@@ -53,6 +50,7 @@ private fun AppNavigation(client: GamepadClient) {
 
     when (currentScreen) {
         Screen.GameList -> GameListScreen(
+            client = client,
             onGameSelected = { currentScreen = Screen.Gamepad }
         )
         Screen.Gamepad -> GamepadScreen(

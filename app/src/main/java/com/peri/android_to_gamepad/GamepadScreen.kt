@@ -1,14 +1,14 @@
 package com.peri.android_to_gamepad
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,10 +16,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.hypot
@@ -27,95 +29,210 @@ import kotlin.math.roundToInt
 
 @Composable
 fun GamepadScreen(client: GamepadClient, onBack: () -> Unit) {
-    var statusText by remember { mutableStateOf("Ready to Connect") }
-
     BackHandler { onBack() }
 
-    Column(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .background(Color.Black)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                GamepadButton("LT", { client.sendCommand("ABS_Z:255") }, { client.sendCommand("ABS_Z:0") }, size = 45.dp, width = 80.dp)
-                GamepadButton("LB", { client.sendCommand("BTN_TL:1") }, { client.sendCommand("BTN_TL:0") }, size = 45.dp, width = 80.dp)
+        val screenW = maxWidth
+        val screenH = maxHeight
+
+        // Bottom-left quadrant is entirely the left joystick's touch zone.
+        JoystickZone(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth(0.5f)
+                .fillMaxHeight(0.5f),
+            onUpdate = { x, y ->
+                val mappedX = (x * 32767).toInt()
+                val mappedY = (y * 32767).toInt()
+                client.sendCommand("ABS_X:$mappedX")
+                client.sendCommand("ABS_Y:$mappedY")
             }
+        )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                GamepadButton("Sel", { client.sendCommand("BTN_SELECT:1") }, { client.sendCommand("BTN_SELECT:0") }, size = 40.dp, width = 60.dp)
-                GamepadButton("Start", { client.sendCommand("BTN_START:1") }, { client.sendCommand("BTN_START:0") }, size = 40.dp, width = 60.dp)
-            }
+        // Y - Elemental Burst
+        GamepadButton(
+            label = "Y",
+            accentColor = Color(0xFFE5C51C),
+            diameter = 58.dp,
+            onDown = { client.sendCommand("BTN_NORTH:1") },
+            onUp = { client.sendCommand("BTN_NORTH:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.644f - 29.dp, y = screenH * 0.897f - 29.dp)
+        )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                GamepadButton("RB", { client.sendCommand("BTN_TR:1") }, { client.sendCommand("BTN_TR:0") }, size = 45.dp, width = 80.dp)
-                GamepadButton("RT", { client.sendCommand("ABS_RZ:255") }, { client.sendCommand("ABS_RZ:0") }, size = 45.dp, width = 80.dp)
-            }
-        }
+        // RT - Elemental Skill (was X)
+        GamepadButton(
+            label = "RT",
+            accentColor = Color.White,
+            diameter = 58.dp,
+            onDown = { client.sendCommand("ABS_RZ:255") },
+            onUp = { client.sendCommand("ABS_RZ:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.724f - 29.dp, y = screenH * 0.852f - 29.dp)
+        )
 
-        Spacer(modifier = Modifier.weight(1f))
+        // B - Normal Attack (was RT)
+        GamepadButton(
+            label = "B",
+            accentColor = Color(0xFFD7263D),
+            diameter = 76.dp,
+            onDown = { client.sendCommand("BTN_EAST:1") },
+            onUp = { client.sendCommand("BTN_EAST:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.833f - 38.dp, y = screenH * 0.711f - 38.dp)
+        )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    GamepadButton("↑", { client.sendCommand("ABS_HAT0Y:-1") }, { client.sendCommand("ABS_HAT0Y:0") }, size = 45.dp)
-                    Row {
-                        GamepadButton("←", { client.sendCommand("ABS_HAT0X:-1") }, { client.sendCommand("ABS_HAT0X:0") }, size = 45.dp)
-                        Spacer(modifier = Modifier.width(45.dp))
-                        GamepadButton("→", { client.sendCommand("ABS_HAT0X:1") }, { client.sendCommand("ABS_HAT0X:0") }, size = 45.dp)
+        // LT - Switch Aiming Mode (was X position, nudged toward Y)
+        GamepadButton(
+            label = "LT",
+            accentColor = Color.White,
+            diameter = 58.dp,
+            onDown = { client.sendCommand("ABS_Z:255") },
+            onUp = { client.sendCommand("ABS_Z:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.684f - 29.dp, y = screenH * 0.730f - 29.dp)
+        )
+
+        // X - Pick Up / Interact (above LT, near where loot prompts appear)
+        GamepadButton(
+            label = "X",
+            accentColor = Color(0xFF1B64E8),
+            diameter = 58.dp,
+            onDown = { client.sendCommand("BTN_WEST:1") },
+            onUp = { client.sendCommand("BTN_WEST:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.684f - 29.dp, y = screenH * 0.550f - 29.dp)
+        )
+
+        // A - Jump
+        GamepadButton(
+            label = "A",
+            accentColor = Color(0xFF28A745),
+            diameter = 58.dp,
+            onDown = { client.sendCommand("BTN_SOUTH:1") },
+            onUp = { client.sendCommand("BTN_SOUTH:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.934f - 29.dp, y = screenH * 0.594f - 29.dp)
+        )
+
+        // RB - Sprint
+        GamepadButton(
+            label = "RB",
+            accentColor = Color.White,
+            diameter = 58.dp,
+            onDown = { client.sendCommand("BTN_TR:1") },
+            onUp = { client.sendCommand("BTN_TR:0") },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = screenW * 0.934f - 29.dp, y = screenH * 0.800f - 29.dp)
+        )
+    }
+}
+
+@Composable
+fun JoystickZone(
+    modifier: Modifier = Modifier,
+    onUpdate: (x: Float, y: Float) -> Unit
+) {
+    var zoneSize by remember { mutableStateOf(IntSize.Zero) }
+    var baseCenter by remember { mutableStateOf<Offset?>(null) }
+    var thumbOffset by remember { mutableStateOf(Offset.Zero) }
+    val density = LocalDensity.current
+
+    Box(
+        modifier = modifier
+            .onSizeChanged { zoneSize = it }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val size = zoneSize
+                    if (size.width == 0 || size.height == 0) return@awaitEachGesture
+
+                    val baseRadiusPx = minOf(size.width, size.height) * 0.38f
+                    val thumbRadiusPx = baseRadiusPx * 0.42f
+                    val maxDragPx = baseRadiusPx - thumbRadiusPx
+
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val clampedCenter = Offset(
+                        x = down.position.x.coerceIn(baseRadiusPx, size.width - baseRadiusPx),
+                        y = down.position.y.coerceIn(baseRadiusPx, size.height - baseRadiusPx)
+                    )
+                    baseCenter = clampedCenter
+                    thumbOffset = Offset.Zero
+                    onUpdate(0f, 0f)
+
+                    val pointerId = down.id
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                        if (!change.pressed) break
+
+                        val dx = change.position.x - clampedCenter.x
+                        val dy = change.position.y - clampedCenter.y
+                        val distance = hypot(dx, dy)
+                        val cx = if (distance > maxDragPx) dx * (maxDragPx / distance) else dx
+                        val cy = if (distance > maxDragPx) dy * (maxDragPx / distance) else dy
+
+                        thumbOffset = Offset(cx, cy)
+                        onUpdate(cx / maxDragPx, cy / maxDragPx)
+                        change.consume()
                     }
-                    GamepadButton("↓", { client.sendCommand("ABS_HAT0Y:1") }, { client.sendCommand("ABS_HAT0Y:0") }, size = 45.dp)
+
+                    baseCenter = null
+                    thumbOffset = Offset.Zero
+                    onUpdate(0f, 0f)
                 }
-
-                Joystick(
-                    size = 130.dp,
-                    onUpdate = { x, y ->
-                        val mappedX = (x * 32767).toInt()
-                        val mappedY = (y * 32767).toInt()
-                        client.sendCommand("ABS_X:$mappedX")
-                        client.sendCommand("ABS_Y:$mappedY")
-                    }
-                )
             }
+    ) {
+        if (zoneSize.width > 0 && zoneSize.height > 0) {
+            val baseRadiusPx = minOf(zoneSize.width, zoneSize.height) * 0.38f
+            val thumbRadiusPx = baseRadiusPx * 0.42f
+            val restPadding = baseRadiusPx * 0.25f
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = statusText, color = Color.White, modifier = Modifier.padding(bottom = 8.dp))
-                Button(onClick = {
-                    statusText = "Connecting..."
-                    client.connect { result -> statusText = result }
-                }) {
-                    Text("Connect")
-                }
-            }
+            val restCenter = Offset(
+                x = baseRadiusPx + restPadding,
+                y = zoneSize.height - baseRadiusPx - restPadding
+            )
+            val isActive = baseCenter != null
+            val center = baseCenter ?: restCenter
+            val visualAlpha = if (isActive) 1f else 0.4f
 
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Joystick(
-                    size = 130.dp,
-                    onUpdate = { x, y ->
-                        val mappedX = (x * 32767).toInt()
-                        val mappedY = (y * 32767).toInt()
-                        client.sendCommand("ABS_RX:$mappedX")
-                        client.sendCommand("ABS_RY:$mappedY")
+            val baseDiameterDp = with(density) { (baseRadiusPx * 2).toDp() }
+            val thumbDiameterDp = with(density) { (thumbRadiusPx * 2).toDp() }
+
+            Box(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            (center.x - baseRadiusPx).roundToInt(),
+                            (center.y - baseRadiusPx).roundToInt()
+                        )
                     }
-                )
+                    .size(baseDiameterDp)
+                    .background(Color.White.copy(alpha = 0.08f * visualAlpha), CircleShape)
+                    .border(1.5.dp, Color.White.copy(alpha = 0.28f * visualAlpha), CircleShape)
+            )
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    GamepadButton("Y", { client.sendCommand("BTN_NORTH:1") }, { client.sendCommand("BTN_NORTH:0") }, Color(0xFFE5C51C), size = 55.dp)
-                    Row(horizontalArrangement = Arrangement.spacedBy(25.dp)) {
-                        GamepadButton("X", { client.sendCommand("BTN_WEST:1") }, { client.sendCommand("BTN_WEST:0") }, Color(0xFF1B64E8), size = 55.dp)
-                        GamepadButton("B", { client.sendCommand("BTN_EAST:1") }, { client.sendCommand("BTN_EAST:0") }, Color(0xFFD62A2A), size = 55.dp)
+            Box(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            (center.x + thumbOffset.x - thumbRadiusPx).roundToInt(),
+                            (center.y + thumbOffset.y - thumbRadiusPx).roundToInt()
+                        )
                     }
-                    GamepadButton("A", { client.sendCommand("BTN_SOUTH:1") }, { client.sendCommand("BTN_SOUTH:0") }, Color(0xFF28A745), size = 55.dp)
-                }
-            }
+                    .size(thumbDiameterDp)
+                    .background(Color(0xFFE6E6E6).copy(alpha = visualAlpha), CircleShape)
+            )
         }
     }
 }
@@ -146,8 +263,6 @@ fun Joystick(
         modifier = modifier
             .size(size)
             .background(Color.DarkGray, CircleShape)
-            // Native Compose pointer input: this gesture is scoped to this composable's
-            // own pointer id, so it doesn't interfere with touches on other buttons/sticks.
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -179,22 +294,22 @@ fun Joystick(
 
 @Composable
 fun GamepadButton(
-    text: String,
+    label: String,
     onDown: () -> Unit,
     onUp: () -> Unit,
-    baseColor: Color = Color.DarkGray,
-    size: Dp = 75.dp,
-    width: Dp = size,
+    accentColor: Color = Color.White,
+    diameter: Dp = 58.dp,
     modifier: Modifier = Modifier
 ) {
     var pressed by remember { mutableStateOf(false) }
+    val fillAlpha by animateFloatAsState(if (pressed) 0.55f else 0.28f, label = "fillAlpha")
+    val borderAlpha by animateFloatAsState(if (pressed) 1f else 0.55f, label = "borderAlpha")
 
     Box(
         modifier = modifier
-            .size(width = width, height = size)
-            .background(if (pressed) Color.LightGray else baseColor, shape = RoundedCornerShape(50))
-            // Each button tracks its own pointer independently, so holding this
-            // button doesn't block presses on any other button or joystick.
+            .size(diameter)
+            .background(Color.Black.copy(alpha = fillAlpha), CircleShape)
+            .border(1.5.dp, accentColor.copy(alpha = borderAlpha), CircleShape)
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
@@ -209,6 +324,11 @@ fun GamepadButton(
             },
         contentAlignment = Alignment.Center
     ) {
-        Text(text = text, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = label,
+            color = accentColor,
+            fontSize = (diameter.value * 0.34f).sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

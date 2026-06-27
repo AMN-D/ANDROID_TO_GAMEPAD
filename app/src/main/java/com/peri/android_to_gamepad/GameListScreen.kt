@@ -3,10 +3,11 @@ package com.peri.android_to_gamepad
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -15,7 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun GameListScreen(onGameSelected: () -> Unit) {
+fun GameListScreen(client: GamepadClient, onGameSelected: () -> Unit) {
+    var statusText by remember { mutableStateOf("Ready to Connect") }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -28,8 +31,25 @@ fun GameListScreen(onGameSelected: () -> Unit) {
             color = Color.White,
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 32.dp)
+            modifier = Modifier.padding(bottom = 16.dp)
         )
+
+        Text(
+            text = statusText,
+            color = Color.White,
+            fontSize = 14.sp,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Button(
+            onClick = {
+                statusText = "Connecting..."
+                client.connect { result -> statusText = result }
+            },
+            modifier = Modifier.padding(bottom = 32.dp)
+        ) {
+            Text("Connect")
+        }
 
         Card(
             modifier = Modifier
