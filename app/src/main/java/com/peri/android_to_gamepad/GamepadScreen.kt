@@ -1,5 +1,6 @@
 package com.peri.android_to_gamepad
 
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -417,6 +419,9 @@ fun GamepadButton(
     val fillAlpha by animateFloatAsState(if (pressed) 0.55f else 0.28f, label = "fillAlpha")
     val borderAlpha by animateFloatAsState(if (pressed) 1f else 0.55f, label = "borderAlpha")
 
+    // Grab the local view so we can trigger a system haptic vibration
+    val view = LocalView.current
+
     Box(
         modifier = modifier
             .size(diameter)
@@ -426,7 +431,15 @@ fun GamepadButton(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     down.consume() // Consume the touch so the CameraZone underneath ignores it
+
                     pressed = true
+
+                    // Force crisp haptic feedback even if system touch vibration is disabled!
+                    view.performHapticFeedback(
+                        HapticFeedbackConstants.KEYBOARD_TAP,
+                        HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+                    )
+
                     onDown()
 
                     val up = waitForUpOrCancellation()
