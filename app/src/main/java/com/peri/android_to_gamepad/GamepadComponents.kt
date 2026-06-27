@@ -287,11 +287,11 @@ fun GamepadButton(
     var pressed by remember { mutableStateOf(false) }
 
     val fillAlpha by animateFloatAsState(
-        targetValue = if (pressed) 0.55f else 0.28f,
+        targetValue = if (pressed) 0.35f else 0.10f,
         label = "fillAlpha"
     )
     val borderAlpha by animateFloatAsState(
-        targetValue = if (pressed) 1f else 0.55f,
+        targetValue = if (pressed) 0.60f else 0.25f,
         label = "borderAlpha"
     )
     // Snappy press-in, smooth release — StiffnessHigh keeps it feeling instant
@@ -385,7 +385,7 @@ fun GamepadButton(
     ) {
         Text(
             text = label,
-            color = accentColor,
+            color = accentColor.copy(alpha = if (pressed) 1f else 0.4f),
             fontSize = (diameter.value * 0.34f).sp,
             fontWeight = FontWeight.Bold
         )

@@ -76,35 +76,35 @@ fun GenshinGamepadScreen(client: GamepadClient, onBack: () -> Unit) {
         // --- CHARACTER SWITCHING ---
 
         GamepadButton(
-            label = "1", accentColor = Color.White, diameter = 44.dp,
+            label = "↑", accentColor = Color.White, diameter = 44.dp,
             onDown = { client.sendCommand("ABS_HAT0Y:-1") },
             onUp = { client.sendCommand("ABS_HAT0Y:0") },
             modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.72f - 22.dp, y = screenH * 0.38f - 22.dp)
+                .offset(x = screenW * 0.72f - 22.dp, y = screenH * 0.26f - 22.dp)
         )
 
         GamepadButton(
-            label = "2", accentColor = Color.White, diameter = 44.dp,
+            label = "→", accentColor = Color.White, diameter = 44.dp,
             onDown = { client.sendCommand("ABS_HAT0X:1") },
             onUp = { client.sendCommand("ABS_HAT0X:0") },
             modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.79f - 22.dp, y = screenH * 0.38f - 22.dp)
+                .offset(x = screenW * 0.79f - 22.dp, y = screenH * 0.26f - 22.dp)
         )
 
         GamepadButton(
-            label = "3", accentColor = Color.White, diameter = 44.dp,
+            label = "←", accentColor = Color.White, diameter = 44.dp,
             onDown = { client.sendCommand("ABS_HAT0X:-1") },
             onUp = { client.sendCommand("ABS_HAT0X:0") },
             modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.86f - 22.dp, y = screenH * 0.38f - 22.dp)
+                .offset(x = screenW * 0.86f - 22.dp, y = screenH * 0.26f - 22.dp)
         )
 
         GamepadButton(
-            label = "4", accentColor = Color.White, diameter = 44.dp,
+            label = "↓", accentColor = Color.White, diameter = 44.dp,
             onDown = { client.sendCommand("ABS_HAT0Y:1") },
             onUp = { client.sendCommand("ABS_HAT0Y:0") },
             modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.93f - 22.dp, y = screenH * 0.38f - 22.dp)
+                .offset(x = screenW * 0.93f - 22.dp, y = screenH * 0.26f - 22.dp)
         )
 
         // --- MAIN ACTION BUTTONS ---
@@ -153,7 +153,7 @@ fun GenshinGamepadScreen(client: GamepadClient, onBack: () -> Unit) {
                 client.sendCommand("ABS_RY:${(y * 32767).toInt()}")
             },
             modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.684f - 22.dp, y = screenH * 0.730f - 22.dp)
+                .offset(x = screenW * 0.684f - 22.dp, y = screenH * 0.700f - 22.dp)
         )
 
         GamepadButton(
@@ -161,7 +161,7 @@ fun GenshinGamepadScreen(client: GamepadClient, onBack: () -> Unit) {
             onDown = { client.sendCommand("BTN_NORTH:1") },
             onUp = { client.sendCommand("BTN_NORTH:0") },
             modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.610f - 22.dp, y = screenH * 0.550f - 22.dp)
+                .offset(x = screenW * 0.660f - 22.dp, y = screenH * 0.560f - 22.dp)
         )
 
         GamepadButton(

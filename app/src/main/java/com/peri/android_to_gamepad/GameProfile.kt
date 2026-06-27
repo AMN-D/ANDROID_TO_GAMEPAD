@@ -6,19 +6,17 @@ import com.peri.android_to_gamepad.layouts.GenshinGamepadScreen
 data class GameProfile(
     val id: String,
     val name: String,
+    val desc: String,
+    val iconRes: Int,
     val layout: @Composable (client: GamepadClient, onBack: () -> Unit) -> Unit
 )
 
-// ── Add new games here only ──────────────────
 val GameProfiles = listOf(
     GameProfile(
         id = "genshin",
         name = "Genshin Impact",
+        desc = "Open-world action RPG with elemental combat",
+        iconRes = R.drawable.genshin_thumb,
         layout = { client, onBack -> GenshinGamepadScreen(client, onBack) }
     )
-    // GameProfile(
-    //     id = "valorant",
-    //     name = "Valorant",
-    //     layout = { client, onBack -> ValorantGamepadScreen(client, onBack) }
-    // )
 )

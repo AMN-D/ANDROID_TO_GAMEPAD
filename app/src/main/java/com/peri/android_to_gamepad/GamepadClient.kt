@@ -7,6 +7,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import java.io.OutputStream
+import java.net.InetSocketAddress
 import java.net.Socket
 
 class GamepadClient {
@@ -28,13 +29,19 @@ class GamepadClient {
         }
     }
 
-    fun connect(onResult: (String) -> Unit) {
+    // NEW: Accepts an IP address, defaults to 127.0.0.1 for wired/ADB
+    fun connect(ip: String = "127.0.0.1", onResult: (String) -> Unit) {
         scope.launch {
             try {
                 socket?.close() // close any previous connection first
-                socket = Socket("127.0.0.1", 5005).apply { tcpNoDelay = true }
+                socket = Socket()
+
+                // NEW: 2-second timeout. Prevents infinite hanging if wireless IP is wrong
+                socket?.connect(InetSocketAddress(ip, 5005), 2000)
+                socket?.tcpNoDelay = true
+
                 outputStream = socket?.getOutputStream()
-                onResult("Connected to PC!")
+                onResult("Connected")
             } catch (e: Exception) {
                 onResult("Failed: ${e.message}")
             }
