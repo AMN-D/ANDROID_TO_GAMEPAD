@@ -24,23 +24,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // TWEAK 1: Keep the screen on so it doesn't sleep during cutscenes
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
         enableEdgeToEdge()
-
-        // TWEAK 2: Enable Immersive Fullscreen (Hide Battery & Nav Bar)
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-
         setContent {
             MaterialTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = Color.Black
-                ) {
+                Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
                     AppNavigation(client = gamepadClient)
                 }
             }
@@ -53,23 +44,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen {
-    GameList,
-    Gamepad
-}
-
 @Composable
 private fun AppNavigation(client: GamepadClient) {
-    var currentScreen by remember { mutableStateOf(Screen.GameList) }
-
-    when (currentScreen) {
-        Screen.GameList -> GameListScreen(
+    var selectedProfile by remember { mutableStateOf<GameProfile?>(null) }
+    if (selectedProfile == null) {
+        GameListScreen(
             client = client,
-            onGameSelected = { currentScreen = Screen.Gamepad }
+            profiles = GameProfiles,
+            onGameSelected = { profile -> selectedProfile = profile }
         )
-        Screen.Gamepad -> GamepadScreen(
-            client = client,
-            onBack = { currentScreen = Screen.GameList }
-        )
+    } else {
+        selectedProfile!!.layout(client) { selectedProfile = null }
     }
 }

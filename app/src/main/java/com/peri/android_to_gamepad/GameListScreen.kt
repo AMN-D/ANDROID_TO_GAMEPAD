@@ -16,13 +16,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun GameListScreen(client: GamepadClient, onGameSelected: () -> Unit) {
+fun GameListScreen(
+    client: GamepadClient,
+    profiles: List<GameProfile>,          // injected, not hardcoded
+    onGameSelected: (GameProfile) -> Unit // passes back which one was tapped
+) {
     var statusText by remember { mutableStateOf("Ready to Connect") }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -33,14 +35,12 @@ fun GameListScreen(client: GamepadClient, onGameSelected: () -> Unit) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
         )
-
         Text(
             text = statusText,
             color = Color.White,
             fontSize = 14.sp,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-
         Button(
             onClick = {
                 statusText = "Connecting..."
@@ -51,23 +51,27 @@ fun GameListScreen(client: GamepadClient, onGameSelected: () -> Unit) {
             Text("Connect")
         }
 
-        Card(
-            modifier = Modifier
-                .size(width = 350.dp, height = 100.dp)
-                .clickable { onGameSelected() },
-            colors = CardDefaults.cardColors(containerColor = Color.DarkGray),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+        // ── One card per profile, automatically ──
+        profiles.forEach { profile ->
+            Card(
+                modifier = Modifier
+                    .size(width = 350.dp, height = 100.dp)
+                    .padding(bottom = 16.dp)
+                    .clickable { onGameSelected(profile) },
+                colors = CardDefaults.cardColors(containerColor = Color.DarkGray),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text(
-                    text = "Genshin Impact",
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = profile.name,
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
