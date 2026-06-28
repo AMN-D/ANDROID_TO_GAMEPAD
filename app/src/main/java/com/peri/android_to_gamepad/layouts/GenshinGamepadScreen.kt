@@ -2,6 +2,7 @@ package com.peri.android_to_gamepad.layouts
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,22 +31,26 @@ fun GenshinGamepadScreen(client: GamepadClient, onBack: () -> Unit) {
         val screenW = maxWidth
         val screenH = maxHeight
 
+        // Left half (bottom): Joystick Zone with dim border
         JoystickZone(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth(0.5f)
-                .fillMaxHeight(0.5f),
+                .fillMaxHeight(0.5f)
+                .border(1.dp, Color.White.copy(alpha = 0.15f)),
             onUpdate = { x, y ->
                 client.sendCommand("ABS_X:${(x * 32767).toInt()}")
                 client.sendCommand("ABS_Y:${(y * 32767).toInt()}")
             }
         )
 
+        // Right half (full height): Camera Zone with dim border
         CameraZone(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxWidth(0.5f)
-                .fillMaxHeight(),
+                .fillMaxHeight()
+                .border(1.dp, Color.White.copy(alpha = 0.15f)),
             onUpdate = { x, y ->
                 client.sendCommand("ABS_RX:${(x * 32767).toInt()}")
                 client.sendCommand("ABS_RY:${(y * 32767).toInt()}")
@@ -186,11 +191,11 @@ fun GenshinGamepadScreen(client: GamepadClient, onBack: () -> Unit) {
 
         // X — (Moved exactly between ↓ and A)
         GamepadButton(
-            label = "X", accentColor = Color(0xFF1B64E8), diameter = 44.dp,
+            label = "X", accentColor = Color(0xFF1B64E8), diameter = 64.dp,
             onDown = { client.sendCommand("BTN_NORTH:1") },
             onUp = { client.sendCommand("BTN_NORTH:0") },
             modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.934f - 22.dp, y = screenH * 0.437f - 22.dp)
+                .offset(x = screenW * 0.934f - 32.dp, y = screenH * 0.388f - 32.dp)
         )
 
         // A
