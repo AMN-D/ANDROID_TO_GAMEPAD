@@ -93,7 +93,7 @@ private fun applyStickCurve(rawX: Float, rawY: Float): Pair<Float, Float> {
 @Composable
 fun CameraZone(
     modifier: Modifier = Modifier,
-    sensitivity: Float = 0.175f,
+    sensitivity: Float = 0.200f,
     onUpdate: (x: Float, y: Float) -> Unit
 ) {
     Box(
