@@ -3,13 +3,16 @@ package com.peri.android_to_gamepad
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
+import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -146,6 +149,7 @@ private fun ConnectionHeader(
     val isConnecting = connectionStatus is ConnectionStatus.Connecting
     val isConnected  = connectionStatus is ConnectionStatus.Connected
     val isFailed     = connectionStatus is ConnectionStatus.Error
+    val context      = LocalContext.current
 
     // Outer Row: left side holds the IP input (filling the full column),
     // right side is the Connect Button stretched to match that column's full
@@ -194,6 +198,15 @@ private fun ConnectionHeader(
             isConnected = isConnected,
             isFailed = isFailed,
             onClick = onConnect,
+            onLongClick = {
+                val message = when (connectionStatus) {
+                    is ConnectionStatus.Idle -> "Not connected"
+                    is ConnectionStatus.Connecting -> "Connecting to $ipAddress..."
+                    is ConnectionStatus.Connected -> "Connected to $ipAddress"
+                    is ConnectionStatus.Error -> "Failed: ${connectionStatus.message}"
+                }
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            },
             modifier = Modifier
                 .fillMaxHeight()
                 .width(56.dp)
@@ -206,23 +219,26 @@ private fun ConnectionHeader(
 // ─────────────────────────────────────────────
 private enum class ButtonIconState { IDLE, CONNECTING, CONNECTED, FAILED }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ConnectButton(
     isConnecting: Boolean,
     isConnected: Boolean,
     isFailed: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
             .clip(RightSideCorner)
             .background(Accent)
-            .clickable(
+            .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 enabled = !isConnecting,
-                onClick = onClick
+                onClick = onClick,
+                onLongClick = onLongClick
             ),
         contentAlignment = Alignment.Center
     ) {
