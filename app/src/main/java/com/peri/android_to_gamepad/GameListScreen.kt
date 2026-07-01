@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
@@ -31,11 +32,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -58,15 +61,6 @@ private val Accent      = Color(0xFFE0E0E0) // Light Gray / Off-White Accent
 private val AccentFg    = Color(0xFF000000) // Black text on Light Gray
 // 2-3 dp for sharp, anti-aliased corners
 private val SharpCorner = RoundedCornerShape(3.dp)
-
-// Matches the card's corner radius, but only on the right side — used for the
-// full-height connect button so it looks fused to the card's edge rather than
-// a separate floating chip. Slightly larger radius so the right side reads
-// as noticeably rounded compared to the sharp left/rest of the card.
-private val RightSideCorner = RoundedCornerShape(
-    topStart = 0.dp, bottomStart = 0.dp,
-    topEnd = 14.dp, bottomEnd = 14.dp
-)
 
 @Composable
 fun GameListScreen(
@@ -120,28 +114,47 @@ fun GameListScreen(
         }
 
         // ── FOOTER (Dimmed and stuck to absolute bottom) ──────────────────────
+        val uriHandler = LocalUriHandler.current
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color(0xFF0A0A0A)) // Barely visible gray background
-                .border(1.dp, Color(0xFF151515)) // Ultra subtle top border
                 .navigationBarsPadding() // Ensures it extends through the system navigation area
-                .padding(vertical = 6.dp), // Thin padding
-            contentAlignment = Alignment.Center
         ) {
-            val footerText = buildAnnotatedString {
-                append("Made with ")
-                withStyle(style = SpanStyle(color = Color(0xFF9E3E3E).copy(alpha = 0.5f))) {
-                    append("love")
+            // Subtle Top Border (replaces the 4-sided border for a cleaner look)
+            HorizontalDivider(thickness = 1.dp, color = Color(0xFF151515))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                val footerText = buildAnnotatedString {
+                    append("Made with ")
+                    withStyle(style = SpanStyle(color = Color(0xFF9E3E3E).copy(alpha = 0.5f))) {
+                        append("love")
+                    }
+                    append(" by @Peri")
                 }
-                append(" by @Peri")
+                Text(
+                    text = footerText,
+                    color = TextMuted.copy(alpha = 0.4f), // Severely dimmed
+                    fontSize = 9.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+                Image(
+                    painter = painterResource(id = R.drawable.github),
+                    contentDescription = "Github",
+                    colorFilter = ColorFilter.tint(Accent.copy(alpha = 0.3f)),
+                    modifier = Modifier
+                        .size(16.dp)
+                        .align(Alignment.CenterEnd)
+                        .clickable {
+                            uriHandler.openUri("https://github.com/AMN-D/ANDROID_TO_GAMEPAD")
+                        }
+                )
             }
-            Text(
-                text = footerText,
-                color = TextMuted.copy(alpha = 0.4f), // Severely dimmed
-                fontSize = 9.sp, // Very small text
-                textAlign = TextAlign.Center
-            )
         }
     }
 }
@@ -161,66 +174,78 @@ private fun ConnectionHeader(
     val isFailed     = connectionStatus is ConnectionStatus.Error
     val context      = LocalContext.current
 
-    // Outer Row: left side holds the IP input (filling the full column),
-    // right side is the Connect Button stretched to match that column's full
-    // height via IntrinsicSize.Min.
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding() // Avoids notch/status bar
-            .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 12.dp)
-            .background(Surface, RightSideCorner)
-            .border(1.dp, Border, RightSideCorner)
-            .animateContentSize() // Adds a smooth transition when expanding/collapsing
-            .height(IntrinsicSize.Min) // Lets the button match the content column's measured height
+    Surface(
+        color = Surface,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        // IP input now fills the entire left column (status text removed)
-        Box(
+        Column(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .heightIn(min = 52.dp)
-                .background(Background, SharpCorner)
-                .border(1.dp, Border, SharpCorner)
-                .padding(horizontal = 12.dp),
-            contentAlignment = Alignment.CenterStart
+                .fillMaxWidth()
+                .statusBarsPadding()
         ) {
-            BasicTextField(
-                value       = ipAddress,
-                onValueChange = onIpChange,
-                textStyle   = TextStyle(
-                    color         = TextMain,
-                    fontSize      = 14.sp,
-                    fontWeight    = FontWeight.Medium,
-                    letterSpacing = 0.5.sp
-                ),
-                singleLine    = true,
-                cursorBrush   = SolidColor(Accent)
-            )
-        }
-
-        // Connect button: spans the full height of the card (top to bottom),
-        // flush against the right edge, narrow width, no text — icon only.
-        // Rounded only on the outer (top-right / bottom-right) corners so it
-        // reads as part of the card rather than a separate floating chip.
-        ConnectButton(
-            isConnecting = isConnecting,
-            isConnected = isConnected,
-            isFailed = isFailed,
-            onClick = onConnect,
-            onLongClick = {
-                val message = when (connectionStatus) {
-                    is ConnectionStatus.Idle -> "Not connected"
-                    is ConnectionStatus.Connecting -> "Connecting to $ipAddress..."
-                    is ConnectionStatus.Connected -> "Connected to $ipAddress"
-                    is ConnectionStatus.Error -> "Failed: ${connectionStatus.message}"
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .height(IntrinsicSize.Min)
+                    .animateContentSize(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // IP input styled like an integrated search bar
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .heightIn(min = 42.dp)
+                        .background(Background, SharpCorner)
+                        .border(1.dp, Border, SharpCorner)
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    BasicTextField(
+                        value       = ipAddress,
+                        onValueChange = onIpChange,
+                        textStyle   = TextStyle(
+                            color         = TextMain,
+                            fontSize      = 14.sp,
+                            fontWeight    = FontWeight.Medium,
+                            letterSpacing = 0.5.sp
+                        ),
+                        singleLine    = true,
+                        cursorBrush   = SolidColor(Accent)
+                    )
+                    
+                    if (ipAddress.isEmpty()) {
+                        Text(
+                            text = "Server IP Address",
+                            color = TextMuted.copy(alpha = 0.5f),
+                            fontSize = 14.sp
+                        )
+                    }
                 }
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            },
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(56.dp)
-        )
+
+                ConnectButton(
+                    isConnecting = isConnecting,
+                    isConnected = isConnected,
+                    isFailed = isFailed,
+                    onClick = onConnect,
+                    onLongClick = {
+                        val message = when (connectionStatus) {
+                            is ConnectionStatus.Idle -> "Not connected"
+                            is ConnectionStatus.Connecting -> "Connecting to $ipAddress..."
+                            is ConnectionStatus.Connected -> "Connected to $ipAddress"
+                            is ConnectionStatus.Error -> "Failed: ${connectionStatus.message}"
+                        }
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(52.dp)
+                )
+            }
+            HorizontalDivider(thickness = 1.dp, color = Border)
+        }
     }
 }
 
@@ -241,7 +266,7 @@ private fun ConnectButton(
 ) {
     Box(
         modifier = modifier
-            .clip(RightSideCorner)
+            .clip(SharpCorner)
             .background(Accent)
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
