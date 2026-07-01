@@ -102,7 +102,7 @@ fun GameListScreen(
         // ── VERTICAL GAME LIST ────────────────────────────────────────────────
         LazyColumn(
             modifier            = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            contentPadding      = PaddingValues(top = 16.dp, bottom = 16.dp, start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp) // Slightly more space between hero cards
         ) {
             items(profiles) { profile ->
@@ -397,47 +397,70 @@ private fun GameProfileRow(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            // Height is removed! The Box will now wrap the exact cinematic aspect ratio of your image automatically.
+            .aspectRatio(21f / 9f) // Forces cinematic aspect ratio for all cards
             .clip(SharpCorner)
             .background(Surface)
             .border(1.dp, Border, SharpCorner)
             .clickable { onClick() }
     ) {
-        // 1. Full-bleed background image determines the banner's true height
-        Image(
-            painter            = painterResource(id = profile.iconRes),
-            contentDescription = "${profile.name} cover",
-            contentScale       = ContentScale.FillWidth, // Matches width, adjusts height automatically
-            modifier           = Modifier.fillMaxWidth()
-        )
+        // Only show image if it's not a dummy/transparent placeholder
+        if (profile.iconRes != android.R.color.transparent) {
+            Image(
+                painter            = painterResource(id = profile.iconRes),
+                contentDescription = "${profile.name} cover",
+                contentScale       = ContentScale.Crop, // Crop to fit the forced aspect ratio
+                modifier           = Modifier.fillMaxSize()
+            )
+        } else {
+            // Placeholder for blank cards
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(Surface, Color(0xFF1A1A1A))
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.WifiOff,
+                    contentDescription = null,
+                    tint = Border,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
 
         // 2. Vertical gradient optimized for dynamic heights (dark at bottom)
         Box(
             modifier = Modifier
-                .matchParentSize() // Matches the size of the Image dynamically without forcing a rigid height
+                .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.Transparent, // Top area remains clear
-                            Color.Transparent, // Mid area remains relatively clear
-                            Background.copy(alpha = 0.95f) // Deep shadow at the text level
+                            Color.Transparent,
+                            Color.Transparent,
+                            Background.copy(alpha = 0.8f)
                         )
                     )
                 )
         )
 
-        // 3. Game title styled smaller, slightly transparent, and in monospace
-        Text(
-            text       = profile.name,
-            color      = TextMain.copy(alpha = 0.7f), // Added subtle transparency
-            fontSize   = 13.sp, // Made smaller and less prominent
-            fontFamily = FontFamily.Monospace, // Android's default Monospace font
-            fontWeight = FontWeight.SemiBold, // Slightly thinner than ExtraBold
-            maxLines   = 1,
-            overflow   = TextOverflow.Ellipsis,
-            modifier   = Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 12.dp, vertical = 10.dp) // Hugs closer to the corner
-        )
+        // 3. Game title
+        if (profile.name.isNotEmpty()) {
+            Text(
+                text       = profile.name,
+                color      = TextMain.copy(alpha = 0.7f),
+                fontSize   = 13.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.SemiBold,
+                maxLines   = 1,
+                overflow   = TextOverflow.Ellipsis,
+                modifier   = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            )
+        }
     }
 }

@@ -17,4 +17,11 @@ val GameProfiles = listOf(
         iconRes = R.drawable.genshin_thumb,
         layout = { client, onBack -> GenshinGamepadScreen(client, onBack) }
     )
-)
+) + List(7) { index ->
+    GameProfile(
+        id = "dummy_$index",
+        name = "",
+        iconRes = android.R.color.transparent,
+        layout = { _, onBack -> onBack() }
+    )
+}
