@@ -37,11 +37,14 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -126,8 +129,15 @@ fun GameListScreen(
                 .padding(vertical = 6.dp), // Thin padding
             contentAlignment = Alignment.Center
         ) {
+            val footerText = buildAnnotatedString {
+                append("Made with ")
+                withStyle(style = SpanStyle(color = Color(0xFF9E3E3E).copy(alpha = 0.5f))) {
+                    append("love")
+                }
+                append(" by @Peri")
+            }
             Text(
-                text = "Made with love by @Peri",
+                text = footerText,
                 color = TextMuted.copy(alpha = 0.4f), // Severely dimmed
                 fontSize = 9.sp, // Very small text
                 textAlign = TextAlign.Center
