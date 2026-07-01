@@ -20,15 +20,21 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : ComponentActivity() {
+    // Retained across orientation changes because of configChanges in AndroidManifest.xml
     private val gamepadClient = GamepadClient()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Keep the screen awake while using the gamepad
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         enableEdgeToEdge()
+
+        // Hide system bars for an immersive, full-screen experience
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
@@ -40,13 +46,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // Safely disconnect when the app is completely closed
         gamepadClient.disconnect()
     }
 }
 
 @Composable
 private fun AppNavigation(client: GamepadClient) {
+    // Holds the currently active profile.
+    // Will not be reset on rotation because Manifest prevents Activity recreation.
     var selectedProfile by remember { mutableStateOf<GameProfile?>(null) }
+
     if (selectedProfile == null) {
         GameListScreen(
             client = client,
@@ -54,6 +64,10 @@ private fun AppNavigation(client: GamepadClient) {
             onGameSelected = { profile -> selectedProfile = profile }
         )
     } else {
-        selectedProfile!!.layout(client) { selectedProfile = null }
+        // Safe unwrap is fine here because of the null check above
+        selectedProfile!!.layout(client) {
+            // onBack callback triggers this to return to the game list
+            selectedProfile = null
+        }
     }
 }

@@ -10,6 +10,13 @@ import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
 
+sealed class ConnectionStatus {
+    object Idle : ConnectionStatus()
+    object Connecting : ConnectionStatus()
+    object Connected : ConnectionStatus()
+    data class Error(val message: String) : ConnectionStatus()
+}
+
 class GamepadClient {
     private var socket: Socket? = null
     private var outputStream: OutputStream? = null
@@ -30,9 +37,10 @@ class GamepadClient {
     }
 
     // NEW: Accepts an IP address, defaults to 127.0.0.1 for wired/ADB
-    fun connect(ip: String = "127.0.0.1", onResult: (String) -> Unit) {
+    fun connect(ip: String = "127.0.0.1", onResult: (ConnectionStatus) -> Unit) {
         scope.launch {
             try {
+                onResult(ConnectionStatus.Connecting)
                 socket?.close() // close any previous connection first
                 socket = Socket()
 
@@ -41,9 +49,9 @@ class GamepadClient {
                 socket?.tcpNoDelay = true
 
                 outputStream = socket?.getOutputStream()
-                onResult("Connected")
+                onResult(ConnectionStatus.Connected)
             } catch (e: Exception) {
-                onResult("Failed: ${e.message}")
+                onResult(ConnectionStatus.Error(e.message ?: "Unknown Error"))
             }
         }
     }
