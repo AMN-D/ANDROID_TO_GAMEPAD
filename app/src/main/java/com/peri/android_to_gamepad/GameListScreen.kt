@@ -192,6 +192,13 @@ private fun ConnectionHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // App Logo / Icon
+                Image(
+                    painter = painterResource(id = R.drawable.gamepad_ico),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
+
                 // IP input styled like an integrated search bar
                 Box(
                     modifier = Modifier

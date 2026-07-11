@@ -149,7 +149,7 @@ fun GenshinGamepadScreen(client: GamepadClient, onBack: () -> Unit) {
 
         // ── LB + X macro ────────────────────────────────────────────────────
         GamepadButton(
-            label = "LB+X", accentColor = Color.White.copy(alpha = dimAlpha), diameter = 44.dp,
+            label = "LB+X", accentColor = Color.White.copy(alpha = dimAlpha), diameter = 56.dp,
             onDown = {
                 scope.launch {
                     client.sendCommand("BTN_TL:1")
@@ -165,7 +165,7 @@ fun GenshinGamepadScreen(client: GamepadClient, onBack: () -> Unit) {
                 }
             },
             modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.76f - 22.dp, y = screenH * 0.16f - 22.dp)
+                .offset(x = screenW * 0.735f - 28.dp, y = screenH * 0.15f - 28.dp)
         )
 
         // ── RT ─────────────────────────────────────────────────────────────
