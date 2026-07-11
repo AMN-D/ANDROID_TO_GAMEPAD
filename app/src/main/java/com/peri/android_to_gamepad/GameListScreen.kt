@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
@@ -80,6 +82,9 @@ fun GameListScreen(
     var connectionStatus by remember { mutableStateOf<ConnectionStatus>(ConnectionStatus.Idle) }
     val sharedPrefs = remember { context.getSharedPreferences("GamepadPrefs", Context.MODE_PRIVATE) }
     var ipAddress   by remember { mutableStateOf(sharedPrefs.getString("saved_ip", "127.0.0.1") ?: "127.0.0.1") }
+    var ipHistory by remember { 
+        mutableStateOf(sharedPrefs.getString("ip_history_list", "")?.split(",")?.filter { it.isNotEmpty() } ?: listOf<String>())
+    }
 
     Column(
         modifier = Modifier
@@ -90,12 +95,20 @@ fun GameListScreen(
         ConnectionHeader(
             connectionStatus = connectionStatus,
             ipAddress  = ipAddress,
+            ipHistory = ipHistory,
             onIpChange = { newIp ->
                 ipAddress = newIp
                 sharedPrefs.edit().putString("saved_ip", newIp).apply()
             },
             onConnect = {
-                client.connect(ipAddress) { result -> connectionStatus = result }
+                client.connect(ipAddress) { result -> 
+                    connectionStatus = result 
+                    if (result is ConnectionStatus.Connected) {
+                        val newHistory = (listOf(ipAddress) + ipHistory).distinct().take(5)
+                        ipHistory = newHistory
+                        sharedPrefs.edit().putString("ip_history_list", newHistory.joinToString(",")).apply()
+                    }
+                }
             }
         )
 
@@ -166,6 +179,7 @@ fun GameListScreen(
 private fun ConnectionHeader(
     connectionStatus: ConnectionStatus,
     ipAddress:  String,
+    ipHistory: List<String>,
     onIpChange: (String) -> Unit,
     onConnect:  () -> Unit
 ) {
@@ -173,6 +187,7 @@ private fun ConnectionHeader(
     val isConnected  = connectionStatus is ConnectionStatus.Connected
     val isFailed     = connectionStatus is ConnectionStatus.Error
     val context      = LocalContext.current
+    var showDropdown by remember { mutableStateOf(false) }
 
     Surface(
         color = Surface,
@@ -207,21 +222,37 @@ private fun ConnectionHeader(
                         .heightIn(min = 42.dp)
                         .background(Background, SharpCorner)
                         .border(1.dp, Border, SharpCorner)
+                        .clickable { showDropdown = true }
                         .padding(horizontal = 12.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    BasicTextField(
-                        value       = ipAddress,
-                        onValueChange = onIpChange,
-                        textStyle   = TextStyle(
-                            color         = TextMain,
-                            fontSize      = 14.sp,
-                            fontWeight    = FontWeight.Medium,
-                            letterSpacing = 0.5.sp
-                        ),
-                        singleLine    = true,
-                        cursorBrush   = SolidColor(Accent)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        BasicTextField(
+                            value       = ipAddress,
+                            onValueChange = onIpChange,
+                            textStyle   = TextStyle(
+                                color         = TextMain,
+                                fontSize      = 14.sp,
+                                fontWeight    = FontWeight.Medium,
+                                letterSpacing = 0.5.sp
+                            ),
+                            singleLine    = true,
+                            cursorBrush   = SolidColor(Accent),
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = "Show history",
+                            tint = TextMuted,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clickable { showDropdown = !showDropdown }
+                        )
+                    }
                     
                     if (ipAddress.isEmpty()) {
                         Text(
@@ -229,6 +260,39 @@ private fun ConnectionHeader(
                             color = TextMuted.copy(alpha = 0.5f),
                             fontSize = 14.sp
                         )
+                    }
+
+                    DropdownMenu(
+                        expanded = showDropdown,
+                        onDismissRequest = { showDropdown = false },
+                        modifier = Modifier
+                            .background(Surface)
+                            .border(1.dp, Border, SharpCorner)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Localhost (127.0.0.1)", color = TextMain, fontSize = 14.sp) },
+                            onClick = {
+                                onIpChange("127.0.0.1")
+                                showDropdown = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.Wifi, contentDescription = null, tint = Accent, modifier = Modifier.size(18.dp)) }
+                        )
+                        
+                        if (ipHistory.isNotEmpty()) {
+                            HorizontalDivider(color = Border, thickness = 1.dp)
+                            ipHistory.forEach { historicalIp ->
+                                if (historicalIp != "127.0.0.1") {
+                                    DropdownMenuItem(
+                                        text = { Text(historicalIp, color = TextMain, fontSize = 14.sp) },
+                                        onClick = {
+                                            onIpChange(historicalIp)
+                                            showDropdown = false
+                                        },
+                                        leadingIcon = { Icon(Icons.Default.History, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp)) }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 

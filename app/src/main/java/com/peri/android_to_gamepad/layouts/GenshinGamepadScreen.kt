@@ -200,7 +200,7 @@ fun GenshinGamepadScreen(client: GamepadClient, onBack: () -> Unit) {
             onDown = { client.sendCommand("BTN_NORTH:1") },
             onUp   = { client.sendCommand("BTN_NORTH:0") },
             modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.934f - 32.dp, y = screenH * 0.388f - 32.dp)
+                .offset(x = screenW * 0.644f - 32.dp, y = screenH * 0.35f - 32.dp)
         )
 
         // ── A ─────────────────────────────────────────────────────────────
