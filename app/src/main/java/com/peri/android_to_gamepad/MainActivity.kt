@@ -1,5 +1,6 @@
 package com.peri.android_to_gamepad
 
+import android.content.Context
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -15,18 +16,49 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.peri.android_to_gamepad.model.GameProfile
+import com.peri.android_to_gamepad.model.GameProfiles
+import com.peri.android_to_gamepad.network.ConnectionStatus
+import com.peri.android_to_gamepad.network.GamepadClient
+import com.peri.android_to_gamepad.network.UdpDiscovery
+import com.peri.android_to_gamepad.ui.theme.screens.GameListScreen
+
+class GamepadConnectionManager(
+    context: Context,
+    private val client: GamepadClient,
+) {
+    private val discovery = UdpDiscovery(context)
+
+    fun startAutoConnect(
+        timeoutMs: Long = 15_000,
+        onStatus: (ConnectionStatus) -> Unit,
+        onTimeout: () -> Unit = {},
+    ) {
+        onStatus(ConnectionStatus.Connecting)
+        discovery.start(
+            timeoutMs = timeoutMs,
+            onFound = { server -> client.connect(server, onResult = onStatus) },
+            onTimeout = onTimeout,
+        )
+    }
+
+    fun connectManually(ip: String, port: Int = 5005, onStatus: (ConnectionStatus) -> Unit) {
+        discovery.stop()
+        client.connect(ip = ip, port = port, onResult = onStatus)
+    }
+
+    fun cancelDiscovery() {
+        discovery.stop()
+    }
+}
 
 class MainActivity : ComponentActivity() {
-    // Retained across orientation changes because of configChanges in AndroidManifest.xml
     private val gamepadClient = GamepadClient()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Keep the screen awake while using the gamepad
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         enableEdgeToEdge()
-
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
@@ -38,16 +70,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Safely disconnect when the app is completely closed
         gamepadClient.disconnect()
     }
 }
 
 @Composable
 private fun AppNavigation(client: GamepadClient) {
-    // Holds the currently active profile.
-    // Will not be reset on rotation because Manifest prevents Activity recreation.
-    var selectedProfile by remember { mutableStateOf<GameProfile?>(null) }
+    var selectedProfile by remember { mutableStateOf<com.peri.android_to_gamepad.model.GameProfile?>(null) }
 
     if (selectedProfile == null) {
         GameListScreen(
@@ -56,9 +85,7 @@ private fun AppNavigation(client: GamepadClient) {
             onGameSelected = { profile -> selectedProfile = profile }
         )
     } else {
-        // Safe unwrap is fine here because of the null check above
         selectedProfile!!.layout(client) {
-            // onBack callback triggers this to return to the game list
             selectedProfile = null
         }
     }

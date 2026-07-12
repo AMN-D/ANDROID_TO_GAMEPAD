@@ -12,213 +12,97 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import com.peri.android_to_gamepad.CameraZone
-import com.peri.android_to_gamepad.GamepadButton
-import com.peri.android_to_gamepad.GamepadClient
-import com.peri.android_to_gamepad.JoystickZone
-import com.peri.android_to_gamepad.SwipeDPad
+import com.peri.android_to_gamepad.ui.theme.components.CameraZone
+import com.peri.android_to_gamepad.ui.theme.components.GamepadButton
+import com.peri.android_to_gamepad.network.GamepadClient
+import com.peri.android_to_gamepad.ui.theme.components.JoystickZone
+import com.peri.android_to_gamepad.ui.theme.components.SwipeDPad
 
 @Composable
 fun GenshinGamepadScreen(client: GamepadClient, onBack: () -> Unit) {
     BackHandler { onBack() }
-
     val scope = rememberCoroutineScope()
-    val dimAlpha = 0.3f
 
-    // ── Cleanup on exit ─────────────────────────────────────────────────────
     DisposableEffect(Unit) {
         onDispose {
-            // Release all active buttons and axes to prevent "stuck" inputs
-            // when the composable leaves the screen.
-            client.sendCommand("ABS_X:0")
-            client.sendCommand("ABS_Y:0")
-            client.sendCommand("ABS_RX:0")
-            client.sendCommand("ABS_RY:0")
-            client.sendCommand("ABS_Z:0")
-            client.sendCommand("ABS_RZ:0")
-            client.sendCommand("ABS_HAT0X:0")
-            client.sendCommand("ABS_HAT0Y:0")
-
-            client.sendCommand("BTN_START:0")
-            client.sendCommand("BTN_SELECT:0")
-            client.sendCommand("BTN_TL:0")
-            client.sendCommand("BTN_TR:0")
-            client.sendCommand("BTN_WEST:0")
-            client.sendCommand("BTN_EAST:0")
-            client.sendCommand("BTN_NORTH:0")
-            client.sendCommand("BTN_SOUTH:0")
+            listOf("ABS_X:0", "ABS_Y:0", "ABS_RX:0", "ABS_RY:0", "ABS_Z:0", "ABS_RZ:0", "ABS_HAT0X:0", "ABS_HAT0Y:0",
+                "BTN_START:0", "BTN_SELECT:0", "BTN_TL:0", "BTN_TR:0", "BTN_WEST:0", "BTN_EAST:0", "BTN_NORTH:0", "BTN_SOUTH:0"
+            ).forEach { client.sendCommand(it) }
         }
     }
 
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-    ) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         val screenW = maxWidth
         val screenH = maxHeight
 
-        // ── Left half (bottom): Joystick ────────────────────────────────────
         JoystickZone(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth(0.5f)
-                .fillMaxHeight(0.5f)
-                .border(1.dp, Color.White.copy(alpha = 0.15f)),
+            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth(0.5f).fillMaxHeight(0.5f).border(1.dp, Color.White.copy(0.15f)),
             onUpdate = { x, y ->
                 client.sendCommand("ABS_X:${(x * 32767).toInt()}")
                 client.sendCommand("ABS_Y:${(y * 32767).toInt()}")
             }
         )
 
-        // ── Right half (full height): Camera ────────────────────────────────
         CameraZone(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxWidth(0.5f)
-                .fillMaxHeight()
-                .border(1.dp, Color.White.copy(alpha = 0.15f)),
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxWidth(0.5f).fillMaxHeight().border(1.dp, Color.White.copy(0.15f)),
             onUpdate = { x, y ->
                 client.sendCommand("ABS_RX:${(x * 32767).toInt()}")
                 client.sendCommand("ABS_RY:${(y * 32767).toInt()}")
             }
         )
 
-        // ── Utility menu buttons (top centre) ───────────────────────────────
-        GamepadButton(
-            label = "St", accentColor = Color.White.copy(alpha = dimAlpha), diameter = 44.dp,
-            onDown = { client.sendCommand("BTN_START:1") },
-            onUp   = { client.sendCommand("BTN_START:0") },
-            modifier = Modifier.align(Alignment.TopStart)
-                .zIndex(1f)
-                .offset(x = screenW * 0.43f - 22.dp, y = screenH * 0.08f - 22.dp)
-        )
-        GamepadButton(
-            label = "Sel", accentColor = Color.White.copy(alpha = dimAlpha), diameter = 44.dp,
-            onDown = { client.sendCommand("BTN_SELECT:1") },
-            onUp   = { client.sendCommand("BTN_SELECT:0") },
-            modifier = Modifier.align(Alignment.TopStart)
-                .zIndex(1f)
-                .offset(x = screenW * 0.50f - 22.dp, y = screenH * 0.08f - 22.dp)
-        )
-        GamepadButton(
-            label = "LB", accentColor = Color.White.copy(alpha = dimAlpha), diameter = 44.dp,
-            onDown = { client.sendCommand("BTN_TL:1") },
-            onUp   = { client.sendCommand("BTN_TL:0") },
-            modifier = Modifier.align(Alignment.TopStart)
-                .zIndex(1f)
-                .offset(x = screenW * 0.57f - 22.dp, y = screenH * 0.08f - 22.dp)
-        )
+        val dim = Color.White.copy(0.3f)
+        GamepadButton("St", { client.sendCommand("BTN_START:1") }, { client.sendCommand("BTN_START:0") }, dim, 44.dp,
+            modifier = Modifier.align(Alignment.TopStart).zIndex(1f).offset(screenW * 0.43f - 22.dp, screenH * 0.08f - 22.dp))
+        GamepadButton("Sel", { client.sendCommand("BTN_SELECT:1") }, { client.sendCommand("BTN_SELECT:0") }, dim, 44.dp,
+            modifier = Modifier.align(Alignment.TopStart).zIndex(1f).offset(screenW * 0.50f - 22.dp, screenH * 0.08f - 22.dp))
+        GamepadButton("LB", { client.sendCommand("BTN_TL:1") }, { client.sendCommand("BTN_TL:0") }, dim, 44.dp,
+            modifier = Modifier.align(Alignment.TopStart).zIndex(1f).offset(screenW * 0.57f - 22.dp, screenH * 0.08f - 22.dp))
 
-        // ── SwipeDPad ────────────────────────────────────────────────────────
         SwipeDPad(
-            swipeThresholdDp  = 18.dp,
-            idleBorderAlpha   = 0.15f,
-            accentColor       = Color.White.copy(alpha = dimAlpha),
+            accentColor = dim,
             onDirectionChange = { x, y ->
                 client.sendCommand("ABS_HAT0X:$x")
                 client.sendCommand("ABS_HAT0Y:$y")
             },
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .fillMaxWidth(0.5f)
-                .fillMaxHeight(0.5f)
+            modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(0.5f).fillMaxHeight(0.5f)
         )
 
-        // ── Y ────────────────────────────────────────────────────────────────
-        GamepadButton(
-            label = "Y", accentColor = Color(0xFFE5C51C).copy(alpha = dimAlpha), diameter = 56.dp,
-            onDown = { client.sendCommand("BTN_WEST:1") },
-            onUp   = { client.sendCommand("BTN_WEST:0") },
-            modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.644f - 28.dp, y = screenH * 0.897f - 28.dp)
-        )
+        GamepadButton("Y", { client.sendCommand("BTN_WEST:1") }, { client.sendCommand("BTN_WEST:0") }, Color(0xFFE5C51C).copy(0.3f), 56.dp,
+            modifier = Modifier.align(Alignment.TopStart).offset(screenW * 0.644f - 28.dp, screenH * 0.897f - 28.dp))
 
-        // ── LT ──────────────────────────────────────────────────────────
-        GamepadButton(
-            label = "LT", accentColor = Color.White.copy(alpha = dimAlpha), diameter = 76.dp,
-            onDown   = { client.sendCommand("ABS_Z:255") },
-            onUp     = { client.sendCommand("ABS_Z:0")   },
+        GamepadButton("LT", { client.sendCommand("ABS_Z:255") }, { client.sendCommand("ABS_Z:0") }, dim, 76.dp,
             onUpdate = { x, y ->
                 client.sendCommand("ABS_RX:${(x * 32767).toInt()}")
                 client.sendCommand("ABS_RY:${(y * 32767).toInt()}")
             },
-            modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.833f - 38.dp, y = screenH * 0.26f - 38.dp)
-        )
+            modifier = Modifier.align(Alignment.TopStart).offset(screenW * 0.833f - 38.dp, screenH * 0.26f - 38.dp))
 
-        // ── LB + X macro ────────────────────────────────────────────────────
-        GamepadButton(
-            label = "LB+X", accentColor = Color.White.copy(alpha = dimAlpha), diameter = 56.dp,
-            onDown = {
-                scope.launch {
-                    client.sendCommand("BTN_TL:1")
-                    delay(35)
-                    client.sendCommand("BTN_NORTH:1")
-                }
-            },
-            onUp = {
-                scope.launch {
-                    client.sendCommand("BTN_NORTH:0")
-                    delay(35)
-                    client.sendCommand("BTN_TL:0")
-                }
-            },
-            modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.735f - 28.dp, y = screenH * 0.15f - 28.dp)
-        )
+        GamepadButton("LB+X", { scope.launch { client.sendCommand("BTN_TL:1"); delay(35); client.sendCommand("BTN_NORTH:1") } },
+            { scope.launch { client.sendCommand("BTN_NORTH:0"); delay(35); client.sendCommand("BTN_TL:0") } }, dim, 56.dp,
+            modifier = Modifier.align(Alignment.TopStart).offset(screenW * 0.735f - 28.dp, screenH * 0.15f - 28.dp))
 
-        // ── RT ─────────────────────────────────────────────────────────────
-        GamepadButton(
-            label = "RT", accentColor = Color.White.copy(alpha = dimAlpha), diameter = 64.dp,
-            onDown   = { client.sendCommand("ABS_RZ:255") },
-            onUp     = { client.sendCommand("ABS_RZ:0")   },
+        GamepadButton("RT", { client.sendCommand("ABS_RZ:255") }, { client.sendCommand("ABS_RZ:0") }, dim, 64.dp,
             onUpdate = { x, y ->
                 client.sendCommand("ABS_RX:${(x * 32767).toInt()}")
                 client.sendCommand("ABS_RY:${(y * 32767).toInt()}")
             },
-            modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.7385f - 32.dp, y = screenH * 0.852f - 32.dp)
-        )
+            modifier = Modifier.align(Alignment.TopStart).offset(screenW * 0.7385f - 32.dp, screenH * 0.852f - 32.dp))
 
-        // ── B ─────────────────────────────────────────────────────────────
-        GamepadButton(
-            label = "B", accentColor = Color(0xFFD7263D).copy(alpha = dimAlpha), diameter = 88.dp,
-            onDown   = { client.sendCommand("BTN_EAST:1") },
-            onUp     = { client.sendCommand("BTN_EAST:0") },
+        GamepadButton("B", { client.sendCommand("BTN_EAST:1") }, { client.sendCommand("BTN_EAST:0") }, Color(0xFFD7263D).copy(0.3f), 88.dp,
             onUpdate = { x, y ->
                 client.sendCommand("ABS_RX:${(x * 32767).toInt()}")
                 client.sendCommand("ABS_RY:${(y * 32767).toInt()}")
             },
-            modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.833f - 44.dp, y = screenH * 0.711f - 44.dp)
-        )
+            modifier = Modifier.align(Alignment.TopStart).offset(screenW * 0.833f - 44.dp, screenH * 0.711f - 44.dp))
 
-        // ── X ─────────────────────────────────────────────────────────────
-        GamepadButton(
-            label = "X", accentColor = Color(0xFF1B64E8).copy(alpha = dimAlpha), diameter = 64.dp,
-            onDown = { client.sendCommand("BTN_NORTH:1") },
-            onUp   = { client.sendCommand("BTN_NORTH:0") },
-            modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.644f - 32.dp, y = screenH * 0.35f - 32.dp)
-        )
+        GamepadButton("X", { client.sendCommand("BTN_NORTH:1") }, { client.sendCommand("BTN_NORTH:0") }, Color(0xFF1B64E8).copy(0.3f), 64.dp,
+            modifier = Modifier.align(Alignment.TopStart).offset(screenW * 0.644f - 32.dp, screenH * 0.35f - 32.dp))
 
-        // ── A ─────────────────────────────────────────────────────────────
-        GamepadButton(
-            label = "A", accentColor = Color(0xFF28A745).copy(alpha = dimAlpha), diameter = 64.dp,
-            onDown = { client.sendCommand("BTN_SOUTH:1") },
-            onUp   = { client.sendCommand("BTN_SOUTH:0") },
-            modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.934f - 32.dp, y = screenH * 0.594f - 32.dp)
-        )
+        GamepadButton("A", { client.sendCommand("BTN_SOUTH:1") }, { client.sendCommand("BTN_SOUTH:0") }, Color(0xFF28A745).copy(0.3f), 64.dp,
+            modifier = Modifier.align(Alignment.TopStart).offset(screenW * 0.934f - 32.dp, screenH * 0.594f - 32.dp))
 
-        // ── RB ────────────────────────────────────────────────────────────
-        GamepadButton(
-            label = "RB", accentColor = Color.White.copy(alpha = dimAlpha), diameter = 64.dp,
-            onDown = { client.sendCommand("BTN_TR:1") },
-            onUp   = { client.sendCommand("BTN_TR:0") },
-            modifier = Modifier.align(Alignment.TopStart)
-                .offset(x = screenW * 0.934f - 32.dp, y = screenH * 0.800f - 32.dp)
-        )
+        GamepadButton("RB", { client.sendCommand("BTN_TR:1") }, { client.sendCommand("BTN_TR:0") }, dim, 64.dp,
+            modifier = Modifier.align(Alignment.TopStart).offset(screenW * 0.934f - 32.dp, screenH * 0.800f - 32.dp))
     }
 }

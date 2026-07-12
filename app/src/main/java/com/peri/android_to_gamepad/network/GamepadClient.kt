@@ -1,67 +1,69 @@
-package com.peri.android_to_gamepad
+package com.peri.android_to_gamepad.network
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import java.io.BufferedOutputStream
 import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.nio.charset.StandardCharsets
 
 sealed class ConnectionStatus {
     object Idle : ConnectionStatus()
     object Connecting : ConnectionStatus()
-    object Connected : ConnectionStatus()
+    data class Connected(val ip: String = "") : ConnectionStatus()
     data class Error(val message: String) : ConnectionStatus()
 }
 
 class GamepadClient {
     private var socket: Socket? = null
     private var outputStream: OutputStream? = null
-
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val commandQueue = Channel<String>(Channel.UNLIMITED)
+    private val commandQueue = Channel<String>(Channel.CONFLATED)
 
     init {
-        // single writer loop -> guarantees commands are sent in the order queued
         scope.launch {
             for (command in commandQueue) {
                 try {
-                    outputStream?.write("$command\n".toByteArray())
+                    outputStream?.write((command + "\n").toByteArray(StandardCharsets.US_ASCII))
                     outputStream?.flush()
-                } catch (e: Exception) { /* dropped, connection likely dead */ }
+                } catch (_: Exception) {}
             }
         }
     }
 
-    // NEW: Accepts an IP address, defaults to 127.0.0.1 for wired/ADB
-    fun connect(ip: String = "127.0.0.1", onResult: (ConnectionStatus) -> Unit) {
+    fun connect(ip: String = "127.0.0.1", port: Int = 5005, onResult: (ConnectionStatus) -> Unit) {
         scope.launch {
             try {
                 onResult(ConnectionStatus.Connecting)
-                socket?.close() // close any previous connection first
+                socket?.close()
                 socket = Socket()
-
-                // NEW: 2-second timeout. Prevents infinite hanging if wireless IP is wrong
-                socket?.connect(InetSocketAddress(ip, 5005), 2000)
+                socket?.connect(InetSocketAddress(ip, port), 2000)
                 socket?.tcpNoDelay = true
-
-                outputStream = socket?.getOutputStream()
-                onResult(ConnectionStatus.Connected)
+                outputStream = BufferedOutputStream(socket?.getOutputStream() ?: throw Exception("Stream null"))
+                onResult(ConnectionStatus.Connected(ip = ip))
             } catch (e: Exception) {
                 onResult(ConnectionStatus.Error(e.message ?: "Unknown Error"))
             }
         }
     }
 
+    fun connect(server: DiscoveredServer, onResult: (ConnectionStatus) -> Unit) {
+        connect(ip = server.ip, port = server.port, onResult = onResult)
+    }
+
     fun sendCommand(command: String) {
-        commandQueue.trySend(command) // non-blocking, never spawns a new coroutine
+        commandQueue.trySend(command)
     }
 
     fun disconnect() {
-        scope.cancel()
-        try { socket?.close() } catch (e: Exception) {}
+        try {
+            socket?.close()
+            socket = null
+            outputStream = null
+        } catch (_: Exception) {}
     }
 }

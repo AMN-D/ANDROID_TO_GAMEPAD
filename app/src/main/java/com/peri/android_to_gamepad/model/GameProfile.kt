@@ -1,8 +1,12 @@
-package com.peri.android_to_gamepad
+package com.peri.android_to_gamepad.model
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import com.peri.android_to_gamepad.R
 import com.peri.android_to_gamepad.layouts.GenshinGamepadScreen
+import com.peri.android_to_gamepad.network.GamepadClient
 
+@Immutable
 data class GameProfile(
     val id: String,
     val name: String,
