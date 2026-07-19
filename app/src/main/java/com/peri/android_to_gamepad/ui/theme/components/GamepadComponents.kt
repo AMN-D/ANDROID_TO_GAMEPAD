@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -120,6 +121,34 @@ fun CameraVisual(modifier: Modifier = Modifier, alpha: Float = 0.2f, isEditing: 
 }
 
 @Composable
+fun DPadVisual(modifier: Modifier = Modifier, isEditing: Boolean = false) {
+    val alpha = if (isEditing) 0.5f else 0.2f
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.fillMaxSize().border(1.dp, DimWhite.copy(alpha)))
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(modifier = Modifier.size(8.dp).background(DimWhite.copy(alpha)))
+            Row {
+                Box(modifier = Modifier.size(8.dp).background(DimWhite.copy(alpha)))
+                Spacer(modifier = Modifier.size(8.dp))
+                Box(modifier = Modifier.size(8.dp).background(DimWhite.copy(alpha)))
+            }
+            Box(modifier = Modifier.size(8.dp).background(DimWhite.copy(alpha)))
+        }
+    }
+}
+
+@Composable
+fun PaddleVisual(label: String, isEditing: Boolean = false) {
+    val alpha = if (isEditing) 0.5f else 0.2f
+    Box(
+        modifier = Modifier.size(24.dp, 40.dp).background(Color.Black.copy(0.1f), RoundedCornerShape(4.dp)).border(1.dp, DimWhite.copy(alpha), RoundedCornerShape(4.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = DimWhite.copy(alpha), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
 fun CameraZone(modifier: Modifier = Modifier, sensitivity: Float = 0.200f, onUpdate: (x: Float, y: Float) -> Unit) {
     Box(modifier = modifier.pointerInput(Unit) {
         awaitEachGesture {
@@ -139,7 +168,7 @@ fun CameraZone(modifier: Modifier = Modifier, sensitivity: Float = 0.200f, onUpd
 }
 
 @Composable
-fun JoystickZone(modifier: Modifier = Modifier, baseRadiusFraction: Float = 0.38f, thumbSizeRatio: Float = 0.42f, restPaddingRatio: Float = 0.25f, isEditing: Boolean = false, onUpdate: (x: Float, y: Float) -> Unit) {
+fun JoystickZone(modifier: Modifier = Modifier, baseRadiusFraction: Float = 0.38f, thumbSizeRatio: Float = 0.42f, restPaddingRatio: Float = 0.25f, isRightSide: Boolean = false, isEditing: Boolean = false, onUpdate: (x: Float, y: Float) -> Unit) {
     var zoneSize by remember { mutableStateOf(IntSize.Zero) }
     var baseCenter by remember { mutableStateOf<Offset?>(null) }
     var thumbOffset by remember { mutableStateOf(Offset.Zero) }
@@ -176,7 +205,8 @@ fun JoystickZone(modifier: Modifier = Modifier, baseRadiusFraction: Float = 0.38
         if (zoneSize.width > 0 && zoneSize.height > 0) {
             val baseRadiusPx = minOf(zoneSize.width, zoneSize.height) * baseRadiusFraction
             val thumbRadiusPx = baseRadiusPx * thumbSizeRatio
-            val restCenter = Offset(baseRadiusPx + (baseRadiusPx * restPaddingRatio), zoneSize.height - baseRadiusPx - (baseRadiusPx * restPaddingRatio))
+            val restX = if (isRightSide) zoneSize.width - baseRadiusPx - (baseRadiusPx * restPaddingRatio) else baseRadiusPx + (baseRadiusPx * restPaddingRatio)
+            val restCenter = Offset(restX, zoneSize.height - baseRadiusPx - (baseRadiusPx * restPaddingRatio))
             val center = baseCenter ?: restCenter
             val baseDp = with(density) { (baseRadiusPx * 2).toDp() }
             val thumbDp = with(density) { (thumbRadiusPx * 2).toDp() }
@@ -262,4 +292,30 @@ fun SwipeDPad(modifier: Modifier = Modifier, swipeThresholdDp: Dp = 18.dp, idleB
         },
         accentColor = DimWhite, borderAlpha = bA, textAlpha = tA, textScale = tS, displayText = txt, isEditing = isEditing
     )
+}
+
+@Composable
+fun TraditionalDPad(modifier: Modifier = Modifier, buttonSize: Dp = 60.dp, spacing: Dp = 50.dp, isEditing: Boolean = false, onDirectionChange: (x: Int, y: Int) -> Unit) {
+    val density = LocalDensity.current
+    var currentX by remember { mutableIntStateOf(0) }
+    var currentY by remember { mutableIntStateOf(0) }
+
+    fun updateDirection(x: Int, y: Int, isDown: Boolean) {
+        if (isDown) {
+            currentX = x
+            currentY = y
+        } else {
+            if (currentX == x) currentX = 0
+            if (currentY == y) currentY = 0
+        }
+        onDirectionChange(currentX, currentY)
+    }
+
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        val offsetPx = with(density) { spacing.toPx() }
+        GamepadButton(label = "↑", onDown = { updateDirection(0, -1, true) }, onUp = { updateDirection(0, -1, false) }, diameter = buttonSize, isEditing = isEditing, modifier = Modifier.offset { IntOffset(0, -offsetPx.roundToInt()) })
+        GamepadButton(label = "↓", onDown = { updateDirection(0, 1, true) }, onUp = { updateDirection(0, 1, false) }, diameter = buttonSize, isEditing = isEditing, modifier = Modifier.offset { IntOffset(0, offsetPx.roundToInt()) })
+        GamepadButton(label = "←", onDown = { updateDirection(-1, 0, true) }, onUp = { updateDirection(-1, 0, false) }, diameter = buttonSize, isEditing = isEditing, modifier = Modifier.offset { IntOffset(-offsetPx.roundToInt(), 0) })
+        GamepadButton(label = "→", onDown = { updateDirection(1, 0, true) }, onUp = { updateDirection(1, 0, false) }, diameter = buttonSize, isEditing = isEditing, modifier = Modifier.offset { IntOffset(offsetPx.roundToInt(), 0) })
+    }
 }

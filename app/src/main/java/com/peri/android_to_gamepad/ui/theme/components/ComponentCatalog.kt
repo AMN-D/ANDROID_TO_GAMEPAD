@@ -26,7 +26,9 @@ import androidx.compose.ui.unit.sp
 sealed class ComponentTool(val name: String, val type: String, val label: String = "") {
     object Joystick : ComponentTool("Joystick", "JOY")
     object Camera : ComponentTool("Camera", "CAM")
+    object RightJoystick : ComponentTool("R Joystick", "RJOY")
     object SwipePad : ComponentTool("D-Pad", "SWP")
+    object DPadTraditional : ComponentTool("D-Pad (Trad)", "DPD")
     object ButtonA : ComponentTool("Button A", "BTN_A", "A")
     object ButtonB : ComponentTool("Button B", "BTN_B", "B")
     object ButtonX : ComponentTool("Button X", "BTN_X", "X")
@@ -37,13 +39,20 @@ sealed class ComponentTool(val name: String, val type: String, val label: String
     object BumperR : ComponentTool("R Bumper", "BMP_R", "RB")
     object Select : ComponentTool("Select", "SEL", "Sel")
     object Start : ComponentTool("Start", "STA", "St")
+    object Home : ComponentTool("Home", "HOME", "Home")
+    object LStickClick : ComponentTool("L Stick Click", "LSB", "LSB")
+    object RStickClick : ComponentTool("R Stick Click", "RSB", "RSB")
+    object PaddleL : ComponentTool("Paddle L", "PDL", "L4")
+    object PaddleR : ComponentTool("Paddle R", "PDR", "R4")
 }
 
 val ALL_TOOLS = listOf(
-    ComponentTool.Joystick, ComponentTool.Camera, ComponentTool.SwipePad,
+    ComponentTool.Joystick, ComponentTool.Camera, ComponentTool.RightJoystick,
+    ComponentTool.SwipePad, ComponentTool.DPadTraditional,
     ComponentTool.ButtonA, ComponentTool.ButtonB, ComponentTool.ButtonX, ComponentTool.ButtonY,
     ComponentTool.TriggerL, ComponentTool.TriggerR, ComponentTool.BumperL, ComponentTool.BumperR,
-    ComponentTool.Select, ComponentTool.Start
+    ComponentTool.Select, ComponentTool.Start, ComponentTool.Home,
+    ComponentTool.LStickClick, ComponentTool.RStickClick, ComponentTool.PaddleL, ComponentTool.PaddleR
 )
 
 @Composable
@@ -62,9 +71,11 @@ fun ComponentCatalogCard(tool: ComponentTool, onClick: () -> Unit) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
                 when (tool) {
-                    is ComponentTool.Joystick -> JoystickVisual(baseDiameter = 30.dp, thumbDiameter = 12.dp, thumbOffset = Offset(9f, 9f), isEditing = true)
+                    is ComponentTool.Joystick, is ComponentTool.RightJoystick -> JoystickVisual(baseDiameter = 30.dp, thumbDiameter = 12.dp, thumbOffset = Offset(9f, 9f), isEditing = true)
                     is ComponentTool.Camera -> CameraVisual(modifier = Modifier.size(30.dp), alpha = 0.5f, isEditing = true)
                     is ComponentTool.SwipePad -> SwipeVisual(modifier = Modifier.size(32.dp, 18.dp), accentColor = Color.White, borderAlpha = 0.5f, textAlpha = 0.7f, textScale = 1f, displayText = "⊕", isEditing = true)
+                    is ComponentTool.DPadTraditional -> DPadVisual(modifier = Modifier.size(32.dp), isEditing = true)
+                    is ComponentTool.PaddleL, is ComponentTool.PaddleR -> PaddleVisual(label = tool.label, isEditing = true)
                     else -> ButtonVisual(label = tool.label, diameter = 30.dp, accentColor = Color.White, fillAlpha = 0.1f, borderAlpha = 0.4f, scale = 1f, textAlpha = 0.6f, isEditing = true)
                 }
             }

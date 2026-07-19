@@ -22,7 +22,7 @@ class GamepadClient {
     private var socket: Socket? = null
     private var outputStream: OutputStream? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val commandQueue = Channel<String>(Channel.CONFLATED)
+    private val commandQueue = Channel<String>(Channel.BUFFERED)
 
     init {
         scope.launch {
