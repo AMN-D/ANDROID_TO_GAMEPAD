@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -193,7 +194,7 @@ private fun GameProfileRow(profile: GameProfile, onClick: () -> Unit) {
             .border(1.dp, Border, SharpCorner)
             .clickable { onClick() }
     ) {
-        if (profile.iconRes != android.R.color.transparent) {
+        if (profile.iconRes != android.R.color.transparent && profile.iconRes != android.R.drawable.ic_menu_add) {
             Image(
                 painter = painterResource(id = profile.iconRes),
                 contentDescription = null,
@@ -202,7 +203,12 @@ private fun GameProfileRow(profile: GameProfile, onClick: () -> Unit) {
             )
         } else {
             Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Surface, Color(0xFF1A1A1A)))), contentAlignment = Alignment.Center) {
-                Icon(imageVector = Icons.Default.WifiOff, contentDescription = null, tint = Border, modifier = Modifier.size(24.dp))
+                Icon(
+                    imageVector = if (profile.iconRes == android.R.drawable.ic_menu_add) Icons.Default.Add else Icons.Default.WifiOff,
+                    contentDescription = null,
+                    tint = Border,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
         Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent, Background.copy(alpha = 0.8f)))))
