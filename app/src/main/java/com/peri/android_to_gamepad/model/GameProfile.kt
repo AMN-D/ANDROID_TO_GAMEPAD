@@ -28,11 +28,4 @@ val GameProfiles = listOf(
         iconRes = android.R.drawable.ic_menu_add,
         layout = { client, onBack -> CustomLayoutPickerScreen(client, onBack) }
     )
-) + List(6) { index ->
-    GameProfile(
-        id = "dummy_$index",
-        name = "",
-        iconRes = android.R.color.transparent,
-        layout = { _, onBack -> onBack() }
-    )
-}
+)

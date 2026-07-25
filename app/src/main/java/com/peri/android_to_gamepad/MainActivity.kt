@@ -7,7 +7,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,6 +20,7 @@ import com.peri.android_to_gamepad.model.GameProfiles
 import com.peri.android_to_gamepad.network.ConnectionStatus
 import com.peri.android_to_gamepad.network.GamepadClient
 import com.peri.android_to_gamepad.network.UdpDiscovery
+import com.peri.android_to_gamepad.ui.theme.ANDROID_TO_GAMEPADTheme
 import com.peri.android_to_gamepad.ui.theme.screens.GameListScreen
 
 class GamepadConnectionManager(
@@ -60,7 +60,7 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         enableEdgeToEdge()
         setContent {
-            MaterialTheme {
+            ANDROID_TO_GAMEPADTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
                     AppNavigation(client = gamepadClient)
                 }

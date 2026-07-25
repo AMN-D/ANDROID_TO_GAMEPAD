@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.peri.android_to_gamepad.ui.theme.DimWhite
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -41,7 +42,6 @@ import kotlin.math.roundToInt
 private const val STICK_DEADZONE  = 0.08f
 private const val STICK_SNAP      = 0.95f
 private const val DELTA_THRESHOLD = 0.012f
-private val DimWhite = Color.White.copy(0.7f)
 
 private fun applyStickCurve(rawX: Float, rawY: Float): Pair<Float, Float> {
     val magnitude = hypot(rawX, rawY).coerceIn(0f, 1f)
@@ -149,8 +149,9 @@ fun PaddleVisual(label: String, isEditing: Boolean = false) {
 }
 
 @Composable
-fun CameraZone(modifier: Modifier = Modifier, sensitivity: Float = 0.200f, onUpdate: (x: Float, y: Float) -> Unit) {
-    Box(modifier = modifier.pointerInput(Unit) {
+fun CameraZone(modifier: Modifier = Modifier, sensitivity: Float = 0.200f, isEditing: Boolean = false, onUpdate: (x: Float, y: Float) -> Unit) {
+    Box(modifier = modifier.pointerInput(isEditing) {
+        if (isEditing) return@pointerInput
         awaitEachGesture {
             val down = awaitFirstDown(true); down.consume(); onUpdate(0f, 0f)
             while (true) {
@@ -226,7 +227,7 @@ fun GamepadButton(label: String, onDown: () -> Unit, onUp: () -> Unit, accentCol
     var pressed by remember { mutableStateOf(false) }
     val fillAlpha by animateFloatAsState(if (pressed) 0.35f else 0.10f, label = "fA")
     val borderAlpha by animateFloatAsState(if (pressed) 0.60f else 0.25f, label = "bA")
-    val scale by animateFloatAsState(if (pressed) 0.91f else 1f, spring(stiffness = Spring.StiffnessHigh), label = "s")
+    val scale by animateFloatAsState(if (pressed) 0.91f else 1f, spring(stiffness = 8000f), label = "s")
     val view = LocalView.current; val density = LocalDensity.current
     val haptic = if (diameter > 70.dp) HapticFeedbackConstants.VIRTUAL_KEY else HapticFeedbackConstants.KEYBOARD_TAP
 
@@ -268,7 +269,7 @@ fun SwipeDPad(modifier: Modifier = Modifier, swipeThresholdDp: Dp = 18.dp, idleB
     var active by remember { mutableStateOf(DPadDirection.NONE) }
     val bA by animateFloatAsState(if (pressed) 0.45f else idleBorderAlpha, label = "b")
     val tA by animateFloatAsState(if (!pressed) 0.13f else if (active != DPadDirection.NONE) 0.90f else 0.40f, label = "tA")
-    val tS by animateFloatAsState(if (pressed && active != DPadDirection.NONE) 1.50f else 1f, spring(stiffness = Spring.StiffnessHigh), label = "tS")
+    val tS by animateFloatAsState(if (pressed && active != DPadDirection.NONE) 1.50f else 1f, spring(stiffness = 8000f), label = "tS")
     val txt = when (active) { DPadDirection.UP -> "↑"; DPadDirection.DOWN -> "↓"; DPadDirection.LEFT -> "←"; DPadDirection.RIGHT -> "→"; else -> if (pressed) "•" else "⊕" }
 
     SwipeVisual(
