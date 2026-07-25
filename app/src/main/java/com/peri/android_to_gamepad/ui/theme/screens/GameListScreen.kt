@@ -6,10 +6,12 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -68,6 +70,8 @@ fun GameListScreen(
     onGameSelected: (GameProfile) -> Unit
 ) {
     val context = LocalContext.current
+    var showPinDialog by remember { mutableStateOf(false) }
+
     DisposableEffect(Unit) {
         val activity = context as? Activity
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -77,20 +81,29 @@ fun GameListScreen(
     var connectionStatus by remember { mutableStateOf<ConnectionStatus>(ConnectionStatus.Idle) }
     val connectionManager = remember { GamepadConnectionManager(context, client) }
 
-    fun startAutoConnect() {
+    fun startAutoConnect(pin: String) {
         connectionManager.startAutoConnect(
+            pin = pin,
             onStatus = { connectionStatus = it },
-            onTimeout = { connectionStatus = ConnectionStatus.Idle }
+            onTimeout = { if (connectionStatus is ConnectionStatus.Connecting) connectionStatus = ConnectionStatus.Idle }
         )
     }
 
-    LaunchedEffect(Unit) { startAutoConnect() }
+    LaunchedEffect(Unit) { 
+        if (connectionStatus is ConnectionStatus.Idle) showPinDialog = true 
+    }
+    
     DisposableEffect(Unit) { onDispose { connectionManager.cancelDiscovery() } }
 
     Column(modifier = Modifier.fillMaxSize().background(Background)) {
         ConnectionHeader(
             connectionStatus = connectionStatus,
-            onRetryDiscovery = { startAutoConnect() }
+            onRetryDiscovery = { 
+                connectionManager.cancelDiscovery()
+                client.disconnect()
+                connectionStatus = ConnectionStatus.Idle
+                showPinDialog = true 
+            }
         )
 
         LazyColumn(
@@ -105,26 +118,68 @@ fun GameListScreen(
 
         Footer()
     }
+
+    if (showPinDialog) {
+        var pinInputText by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showPinDialog = false },
+            containerColor = Surface,
+            title = { Text("CONNECT TO RECEIVER", color = TextMain, fontSize = 14.sp, fontFamily = FontFamily.Monospace) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Enter the 4-digit PIN shown on your PC receiver to authenticate.", color = TextMuted, fontSize = 11.sp)
+                    OutlinedTextField(
+                        value = pinInputText,
+                        onValueChange = { if (it.length <= 4) pinInputText = it },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = Border,
+                            focusedBorderColor = Accent,
+                            focusedTextColor = TextMain,
+                            unfocusedTextColor = TextMain
+                        ),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, letterSpacing = 4.sp)
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPinDialog = false }) { Text("CLOSE", color = TextMuted) }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (pinInputText.length == 4) {
+                        showPinDialog = false
+                        startAutoConnect(pinInputText)
+                    }
+                }) { Text("CONNECT", color = TextMain) }
+            }
+        )
+    }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ConnectionHeader(
     connectionStatus: ConnectionStatus,
-    onRetryDiscovery: () -> Unit
+    onRetryDiscovery: () -> Unit,
+    onLongClick: () -> Unit = {}
 ) {
     val isConnecting = connectionStatus is ConnectionStatus.Connecting
-    val isConnected = connectionStatus is ConnectionStatus.Connected
-    val isFailed = connectionStatus is ConnectionStatus.Error
+    val isConnected = connectionStatus is ConnectionStatus.Connected || connectionStatus is ConnectionStatus.Authenticated
+    val isFailed = connectionStatus is ConnectionStatus.Error || connectionStatus is ConnectionStatus.Unauthorized
 
     val headerColor by animateColorAsState(if (isConnected) SurfaceConnected else Surface, label = "header_color")
     val statusText = when (connectionStatus) {
-        is ConnectionStatus.Idle -> "Not connected — tap to search"
-        is ConnectionStatus.Connecting -> "Searching for server…"
-        is ConnectionStatus.Connected -> "Connected — ${connectionStatus.ip}"
-        is ConnectionStatus.Error -> "Not found — tap to retry"
+        is ConnectionStatus.Idle -> "Not connected — tap to pair"
+        is ConnectionStatus.Connecting -> "Authenticating…"
+        is ConnectionStatus.Connected -> "Handshake in progress…"
+        is ConnectionStatus.Authenticated -> "Connected"
+        is ConnectionStatus.Unauthorized -> "Auth Failed — check PIN"
+        is ConnectionStatus.Error -> "Connection error — retry"
     }
     val dotColor = when {
-        isConnected -> StatusOk
+        connectionStatus is ConnectionStatus.Authenticated -> StatusOk
+        isConnected -> Accent
         isFailed -> StatusFailed
         else -> TextMuted
     }
@@ -136,7 +191,10 @@ private fun ConnectionHeader(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
                     .animateContentSize()
-                    .clickable(enabled = !isConnecting) { onRetryDiscovery() },
+                    .combinedClickable(
+                        onClick = { onRetryDiscovery() },
+                        onLongClick = onLongClick
+                    ),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {

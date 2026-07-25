@@ -30,6 +30,7 @@ class GamepadConnectionManager(
     private val discovery = UdpDiscovery(context)
 
     fun startAutoConnect(
+        pin: String = "",
         timeoutMs: Long = 15_000,
         onStatus: (ConnectionStatus) -> Unit,
         onTimeout: () -> Unit = {},
@@ -37,14 +38,14 @@ class GamepadConnectionManager(
         onStatus(ConnectionStatus.Connecting)
         discovery.start(
             timeoutMs = timeoutMs,
-            onFound = { server -> client.connect(server, onResult = onStatus) },
+            onFound = { server -> client.connect(server, pin = pin, onResult = onStatus) },
             onTimeout = onTimeout,
         )
     }
 
-    fun connectManually(ip: String, port: Int = 5005, onStatus: (ConnectionStatus) -> Unit) {
+    fun connectManually(ip: String, port: Int = 5005, pin: String = "", onStatus: (ConnectionStatus) -> Unit) {
         discovery.stop()
-        client.connect(ip = ip, port = port, onResult = onStatus)
+        client.connect(ip = ip, port = port, pin = pin, onResult = onStatus)
     }
 
     fun cancelDiscovery() {
