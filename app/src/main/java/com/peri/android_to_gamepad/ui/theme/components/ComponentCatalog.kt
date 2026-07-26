@@ -35,6 +35,8 @@ sealed class ComponentTool(val name: String, val type: String, val label: String
     object ButtonY : ComponentTool("Button Y", "BTN_Y", "Y")
     object TriggerL : ComponentTool("L Trigger", "TRG_L", "LT")
     object TriggerR : ComponentTool("R Trigger", "TRG_R", "RT")
+    object TriggerLAnalog : ComponentTool("Analog L", "TRG_L_ANALOG", "LT")
+    object TriggerRAnalog : ComponentTool("Analog R", "TRG_R_ANALOG", "RT")
     object BumperL : ComponentTool("L Bumper", "BMP_L", "LB")
     object BumperR : ComponentTool("R Bumper", "BMP_R", "RB")
     object Select : ComponentTool("Select", "SEL", "Sel")
@@ -50,7 +52,7 @@ val ALL_TOOLS = listOf(
     ComponentTool.Joystick, ComponentTool.Camera, ComponentTool.RightJoystick,
     ComponentTool.SwipePad, ComponentTool.DPadTraditional,
     ComponentTool.ButtonA, ComponentTool.ButtonB, ComponentTool.ButtonX, ComponentTool.ButtonY,
-    ComponentTool.TriggerL, ComponentTool.TriggerR, ComponentTool.BumperL, ComponentTool.BumperR,
+    ComponentTool.TriggerL, ComponentTool.TriggerR, ComponentTool.TriggerLAnalog, ComponentTool.TriggerRAnalog, ComponentTool.BumperL, ComponentTool.BumperR,
     ComponentTool.Select, ComponentTool.Start, ComponentTool.Home,
     ComponentTool.LStickClick, ComponentTool.RStickClick, ComponentTool.PaddleL, ComponentTool.PaddleR
 )
@@ -76,6 +78,7 @@ fun ComponentCatalogCard(tool: ComponentTool, onClick: () -> Unit) {
                     is ComponentTool.SwipePad -> SwipeVisual(modifier = Modifier.size(32.dp, 18.dp), accentColor = Color.White, borderAlpha = 0.5f, textAlpha = 0.7f, textScale = 1f, displayText = "⊕", isEditing = true)
                     is ComponentTool.DPadTraditional -> DPadVisual(modifier = Modifier.size(32.dp), isEditing = true)
                     is ComponentTool.PaddleL, is ComponentTool.PaddleR -> PaddleVisual(label = tool.label, isEditing = true)
+                    is ComponentTool.TriggerLAnalog, is ComponentTool.TriggerRAnalog -> AnalogSliderVisual(modifier = Modifier.size(24.dp, 40.dp), label = tool.label, value = 0.5f, isEditing = true)
                     else -> ButtonVisual(label = tool.label, diameter = 30.dp, accentColor = Color.White, fillAlpha = 0.1f, borderAlpha = 0.4f, scale = 1f, textAlpha = 0.6f, isEditing = true)
                 }
             }

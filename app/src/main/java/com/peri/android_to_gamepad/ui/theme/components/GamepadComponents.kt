@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -320,3 +321,83 @@ fun TraditionalDPad(modifier: Modifier = Modifier, buttonSize: Dp = 60.dp, spaci
         GamepadButton(label = "→", onDown = { updateDirection(1, 0, true) }, onUp = { updateDirection(1, 0, false) }, diameter = buttonSize, isEditing = isEditing, modifier = Modifier.offset { IntOffset(offsetPx.roundToInt(), 0) })
     }
 }
+
+@Composable
+fun AnalogSliderVisual(
+    modifier: Modifier = Modifier,
+    label: String = "",
+    value: Float,
+    isHorizontal: Boolean = false,
+    isEditing: Boolean = false
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color.White.copy(0.05f))
+            .border(1.dp, Color.White.copy(0.15f), RoundedCornerShape(6.dp)),
+        contentAlignment = if (isHorizontal) Alignment.CenterStart else Alignment.BottomCenter
+    ) {
+        Box(
+            modifier = Modifier
+                .then(if (isHorizontal) Modifier.fillMaxWidth(value.coerceIn(0.01f, 1f)).fillMaxHeight() else Modifier.fillMaxWidth().fillMaxHeight(value.coerceIn(0.01f, 1f)))
+                .background(Color.White.copy(0.2f))
+        )
+        
+        if (label.isNotEmpty()) {
+            Text(
+                text = label,
+                color = Color.White.copy(if (value > 0.1f) 0.8f else 0.3f),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = if (isHorizontal) 0.dp else 4.dp, start = if (isHorizontal) 4.dp else 0.dp).align(if (isHorizontal) Alignment.CenterStart else Alignment.BottomCenter)
+            )
+        }
+    }
+}
+
+@Composable
+fun AnalogSlider(
+    modifier: Modifier = Modifier,
+    label: String = "",
+    isHorizontal: Boolean = false,
+    isEditing: Boolean = false,
+    onValueChange: (Float) -> Unit
+) {
+    var sliderValue by remember { mutableStateOf(0f) }
+
+    Box(
+        modifier = modifier
+            .pointerInput(isEditing, isHorizontal) {
+                if (isEditing) return@pointerInput
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+                        
+                        if (isHorizontal) {
+                            val width = size.width.toFloat()
+                            if (width > 0) {
+                                sliderValue = (change.position.x / width).coerceIn(0f, 1f)
+                                onValueChange(sliderValue)
+                            }
+                        } else {
+                            val height = size.height.toFloat()
+                            if (height > 0) {
+                                sliderValue = (1f - (change.position.y / height)).coerceIn(0f, 1f)
+                                onValueChange(sliderValue)
+                            }
+                        }
+                        change.consume()
+                    }
+                    sliderValue = 0f
+                    onValueChange(0f)
+                }
+            }
+    ) {
+        AnalogSliderVisual(label = label, value = sliderValue, isHorizontal = isHorizontal, modifier = Modifier.fillMaxSize(), isEditing = isEditing)
+    }
+}
+

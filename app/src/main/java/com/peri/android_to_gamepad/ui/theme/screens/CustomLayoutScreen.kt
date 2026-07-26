@@ -44,7 +44,8 @@ data class PlacedComponent(
     val height: MutableState<Dp>,
     val isRightAnchored: MutableState<Boolean> = mutableStateOf(false),
     val dpadButtonSize: MutableState<Dp> = mutableStateOf(60.dp),
-    val dpadSpacing: MutableState<Dp> = mutableStateOf(50.dp)
+    val dpadSpacing: MutableState<Dp> = mutableStateOf(50.dp),
+    val isHorizontal: MutableState<Boolean> = mutableStateOf(false)
 )
 
 private val GridColor = Color.White.copy(0.18f)
@@ -75,7 +76,7 @@ fun CustomLayoutScreen(client: GamepadClient, initialPreset: String = "Default",
         val serialized = components.joinToString(";") { 
             val xDp = with(density) { it.offset.value.x.toDp().value }
             val yDp = with(density) { it.offset.value.y.toDp().value }
-            "${it.type},$xDp,$yDp,${it.width.value.value},${it.height.value.value},${it.isRightAnchored.value},${it.dpadButtonSize.value.value},${it.dpadSpacing.value.value}" 
+            "${it.type},$xDp,$yDp,${it.width.value.value},${it.height.value.value},${it.isRightAnchored.value},${it.dpadButtonSize.value.value},${it.dpadSpacing.value.value},${it.isHorizontal.value}" 
         }
         prefs.edit().putString("layout_$name", serialized).apply()
         Toast.makeText(context, "Layout Saved: $name", Toast.LENGTH_SHORT).show()
@@ -85,22 +86,34 @@ fun CustomLayoutScreen(client: GamepadClient, initialPreset: String = "Default",
         serialized.split(";").forEach { item ->
             val parts = item.split(",")
             if (parts.size >= 5) {
-                val xPx = with(density) { parts[1].toFloat().dp.toPx() }
-                val yPx = with(density) { parts[2].toFloat().dp.toPx() }
-                // Migration: If parts[5] was isLocked, skip it. 
-                // Original format: type,x,y,w,h,isLocked,isRightAnchored,bs,sp
-                // New format: type,x,y,w,h,isRightAnchored,bs,sp
-                val isRightIdx = if (parts.size > 6 && (parts[5] == "true" || parts[5] == "false")) 6 else 5
+                val xPx = with(density) { parts.getOrNull(1)?.toFloatOrNull()?.dp?.toPx() ?: 0f }
+                val yPx = with(density) { parts.getOrNull(2)?.toFloatOrNull()?.dp?.toPx() ?: 0f }
+                
+                // Format detection:
+                // New Format (Size 9+): type,x,y,w,h,isRight,bs,sp,isHorizontal
+                // Legacy Format (Size 9): type,x,y,w,h,isLocked,isRight,bs,sp
+                // Standard Format (Size 8): type,x,y,w,h,isRight,bs,sp
+                
+                val part8IsBool = parts.getOrNull(8)?.let { it == "true" || it == "false" } ?: false
+                val isNewFormat = parts.size >= 9 && part8IsBool
+                val isLegacyWithLock = !isNewFormat && parts.size >= 9
+                
+                val isRightIdx = when {
+                    isNewFormat -> 5
+                    isLegacyWithLock -> 6
+                    else -> 5
+                }
                 
                 components.add(PlacedComponent(
                     System.currentTimeMillis() + components.size,
                     parts[0],
                     mutableStateOf(Offset(xPx, yPx)),
-                    mutableStateOf(parts[3].toFloat().dp),
-                    mutableStateOf(parts[4].toFloat().dp),
+                    mutableStateOf(parts.getOrNull(3)?.toFloatOrNull()?.dp ?: 50.dp),
+                    mutableStateOf(parts.getOrNull(4)?.toFloatOrNull()?.dp ?: 50.dp),
                     mutableStateOf(parts.getOrNull(isRightIdx)?.toBoolean() ?: false),
-                    mutableStateOf(parts.getOrNull(isRightIdx + 1)?.toFloat()?.dp ?: 60.dp),
-                    mutableStateOf(parts.getOrNull(isRightIdx + 2)?.toFloat()?.dp ?: 50.dp)
+                    mutableStateOf(parts.getOrNull(isRightIdx + 1)?.toFloatOrNull()?.dp ?: 60.dp),
+                    mutableStateOf(parts.getOrNull(isRightIdx + 2)?.toFloatOrNull()?.dp ?: 50.dp),
+                    mutableStateOf(if (isNewFormat) parts.getOrNull(isRightIdx + 3)?.toBoolean() ?: false else false)
                 ))
             }
         }
@@ -145,6 +158,24 @@ fun CustomLayoutScreen(client: GamepadClient, initialPreset: String = "Default",
                     .size(pc.width.value + 16.dp, pc.height.value + 16.dp)
                     .then(if(isEditing) Modifier.clickable { selectedId = pc.id } else Modifier)
             ) {
+                // Ghost Outline (Snapped Prediction)
+                if (isEditing && isSelected && showGrid) {
+                    Box(
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .offset { 
+                                val snapX = snap(pc.offset.value.x) - pc.offset.value.x
+                                val snapY = snap(pc.offset.value.y) - pc.offset.value.y
+                                IntOffset(snapX.roundToInt(), snapY.roundToInt())
+                            }
+                            .size(
+                                with(density) { snap(pc.width.value.toPx()).toDp() },
+                                with(density) { snap(pc.height.value.toPx()).toDp() }
+                            )
+                            .border(1.dp, Color.White.copy(0.3f), RoundedCornerShape(2.dp))
+                    )
+                }
+
                 Box(
                     modifier = Modifier
                         .padding(8.dp)
@@ -163,6 +194,8 @@ fun CustomLayoutScreen(client: GamepadClient, initialPreset: String = "Default",
                         "BTN_Y" -> GamepadButton("Y", modifier = Modifier.fillMaxSize(), isEditing = isEditing, onDown = { client.sendCommand("BTN_WEST:1") }, onUp = { client.sendCommand("BTN_WEST:0") })
                         "TRG_L" -> GamepadButton("LT", modifier = Modifier.fillMaxSize(), isEditing = isEditing, onDown = { client.sendCommand("ABS_Z:255") }, onUp = { client.sendCommand("ABS_Z:0") })
                         "TRG_R" -> GamepadButton("RT", modifier = Modifier.fillMaxSize(), isEditing = isEditing, onDown = { client.sendCommand("ABS_RZ:255") }, onUp = { client.sendCommand("ABS_RZ:0") })
+                        "TRG_L_ANALOG" -> AnalogSlider(label = "LT", modifier = Modifier.fillMaxSize(), isHorizontal = pc.isHorizontal.value, isEditing = isEditing, onValueChange = { client.sendCommand("ABS_Z:${(it * 255).toInt()}") })
+                        "TRG_R_ANALOG" -> AnalogSlider(label = "RT", modifier = Modifier.fillMaxSize(), isHorizontal = pc.isHorizontal.value, isEditing = isEditing, onValueChange = { client.sendCommand("ABS_RZ:${(it * 255).toInt()}") })
                         "BMP_L" -> GamepadButton("LB", modifier = Modifier.fillMaxSize(), isEditing = isEditing, onDown = { client.sendCommand("BTN_TL:1") }, onUp = { client.sendCommand("BTN_TL:0") })
                         "BMP_R" -> GamepadButton("RB", modifier = Modifier.fillMaxSize(), isEditing = isEditing, onDown = { client.sendCommand("BTN_TR:1") }, onUp = { client.sendCommand("BTN_TR:0") })
                         "SEL" -> GamepadButton("Sel", modifier = Modifier.fillMaxSize(), isEditing = isEditing, onDown = { client.sendCommand("BTN_SELECT:1") }, onUp = { client.sendCommand("BTN_SELECT:0") })
@@ -174,8 +207,33 @@ fun CustomLayoutScreen(client: GamepadClient, initialPreset: String = "Default",
                         "PDR" -> GamepadButton("R4", modifier = Modifier.fillMaxSize(), isEditing = isEditing, onDown = { client.sendCommand("BTN_Z:1") }, onUp = { client.sendCommand("BTN_Z:0") })
                     }
                     if (isEditing) {
-                        Box(modifier = Modifier.fillMaxSize().pointerInput(pc.id) { detectDragGestures(onDragStart = { isDragging = true; selectedId = pc.id }, onDragEnd = { isDragging = false }) { change, dragAmount -> change.consume(); val next = pc.offset.value + dragAmount; pc.offset.value = Offset(snap(next.x), snap(next.y)) } })
+                        Box(modifier = Modifier.fillMaxSize().pointerInput(pc.id) { 
+                            detectDragGestures(
+                                onDragStart = { isDragging = true; selectedId = pc.id }, 
+                                onDragEnd = { 
+                                    isDragging = false
+                                    if (showGrid) {
+                                        pc.offset.value = Offset(snap(pc.offset.value.x), snap(pc.offset.value.y))
+                                    }
+                                }
+                            ) { change, dragAmount -> 
+                                change.consume()
+                                pc.offset.value += dragAmount 
+                            } 
+                        })
                         if (isSelected) {
+                            // Top-Left: Rotate (for Analog Sliders)
+                            if (pc.type == "TRG_L_ANALOG" || pc.type == "TRG_R_ANALOG") {
+                                IconButton(onClick = { 
+                                    pc.isHorizontal.value = !pc.isHorizontal.value
+                                    val oldW = pc.width.value
+                                    pc.width.value = pc.height.value
+                                    pc.height.value = oldW
+                                }, modifier = Modifier.align(Alignment.TopStart).offset((-12).dp, (-12).dp).size(24.dp).background(Color.Black.copy(0.6f), CircleShape).border(1.dp, DimWhite.copy(0.5f), CircleShape)) { 
+                                    Icon(Icons.Default.RotateRight, null, tint = DimWhite, modifier = Modifier.size(14.dp)) 
+                                }
+                            }
+
                             // Top-Right: Delete
                             IconButton(onClick = { components.remove(pc); selectedId = -1L }, modifier = Modifier.align(Alignment.TopEnd).offset(12.dp, (-12).dp).size(24.dp).background(Color.Black.copy(0.6f), CircleShape).border(1.dp, DimWhite.copy(0.5f), CircleShape)) { Icon(Icons.Default.Close, null, tint = DimWhite, modifier = Modifier.size(14.dp)) }
                             
@@ -186,13 +244,20 @@ fun CustomLayoutScreen(client: GamepadClient, initialPreset: String = "Default",
 
                             // Bottom-Right: Resize Handle
                             Box(modifier = Modifier.align(Alignment.BottomEnd).offset(12.dp, 12.dp).size(28.dp).background(Color.Black.copy(0.6f), CircleShape).border(1.dp, DimWhite.copy(0.5f), CircleShape).pointerInput(pc.id) {
-                                detectDragGestures { change, dragAmount ->
+                                detectDragGestures(
+                                    onDragEnd = {
+                                        if (showGrid) {
+                                            pc.width.value = with(density) { snap(pc.width.value.toPx()).toDp() }
+                                            pc.height.value = with(density) { snap(pc.height.value.toPx()).toDp() }
+                                        }
+                                    }
+                                ) { change, dragAmount ->
                                     change.consume()
                                     val newW = (pc.width.value + with(density){ dragAmount.x.toDp() }).coerceAtLeast(40.dp)
                                     val newH = (pc.height.value + with(density){ dragAmount.y.toDp() }).coerceAtLeast(40.dp)
                                     
-                                    pc.width.value = with(density) { snap(newW.toPx()).toDp() }
-                                    pc.height.value = with(density) { snap(newH.toPx()).toDp() }
+                                    pc.width.value = newW
+                                    pc.height.value = newH
                                 }
                             }, contentAlignment = Alignment.Center) { Icon(Icons.Default.AspectRatio, null, tint = DimWhite, modifier = Modifier.size(16.dp)) }
                         }
@@ -272,10 +337,15 @@ fun CustomLayoutScreen(client: GamepadClient, initialPreset: String = "Default",
                     val defaultSize = when(tool.type) {
                         "JOY", "CAM", "RJOY" -> 150.dp
                         "DPD" -> 160.dp
+                        "TRG_L_ANALOG", "TRG_R_ANALOG" -> 50.dp
                         "PDL", "PDR" -> 60.dp
                         else -> 70.dp
                     }
-                    val defaultHeight = if(tool.type == "PDL" || tool.type == "PDR") 100.dp else defaultSize
+                    val defaultHeight = when(tool.type) {
+                        "PDL", "PDR" -> 100.dp
+                        "TRG_L_ANALOG", "TRG_R_ANALOG" -> 120.dp
+                        else -> defaultSize
+                    }
                         components.add(PlacedComponent(
                             System.currentTimeMillis() + components.size, 
                             tool.type, 
@@ -284,7 +354,8 @@ fun CustomLayoutScreen(client: GamepadClient, initialPreset: String = "Default",
                             mutableStateOf(defaultHeight),
                             mutableStateOf(tool.type == "RJOY"),
                             mutableStateOf(60.dp),
-                            mutableStateOf(50.dp)
+                            mutableStateOf(50.dp),
+                            mutableStateOf(false)
                         )) 
                 }
             }
