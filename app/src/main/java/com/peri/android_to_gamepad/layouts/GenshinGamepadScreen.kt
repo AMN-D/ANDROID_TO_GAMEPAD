@@ -8,8 +8,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import com.peri.android_to_gamepad.ui.theme.components.CameraZone
@@ -20,8 +24,22 @@ import com.peri.android_to_gamepad.ui.theme.components.SwipeDPad
 
 @Composable
 fun GenshinGamepadScreen(client: GamepadClient, onBack: () -> Unit) {
+    val context = LocalContext.current
     BackHandler { onBack() }
     val scope = rememberCoroutineScope()
+
+    DisposableEffect(Unit) {
+        val activity = context as? android.app.Activity
+        val window = activity?.window ?: return@DisposableEffect onDispose {}
+        val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+        insetsController.apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+        onDispose {
+            insetsController.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
