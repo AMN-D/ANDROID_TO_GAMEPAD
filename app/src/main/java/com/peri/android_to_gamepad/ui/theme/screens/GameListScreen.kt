@@ -50,6 +50,8 @@ import com.peri.android_to_gamepad.GamepadConnectionManager
 import com.peri.android_to_gamepad.R
 import com.peri.android_to_gamepad.model.GameProfile
 import com.peri.android_to_gamepad.network.ConnectionStatus
+import com.peri.android_to_gamepad.network.DeviceStorage
+import com.peri.android_to_gamepad.network.DiscoveredServer
 import com.peri.android_to_gamepad.network.GamepadClient
 
 private val Background  = Color(0xFF000000)
@@ -66,11 +68,13 @@ private val SharpCorner = RoundedCornerShape(3.dp)
 @Composable
 fun GameListScreen(
     client: GamepadClient,
+    storage: DeviceStorage,
     profiles: List<GameProfile>,
     onGameSelected: (GameProfile) -> Unit
 ) {
     val context = LocalContext.current
     var showPinDialog by remember { mutableStateOf(false) }
+    var discoveredServer by remember { mutableStateOf<DiscoveredServer?>(null) }
 
     DisposableEffect(Unit) {
         val activity = context as? Activity
@@ -79,18 +83,25 @@ fun GameListScreen(
     }
 
     var connectionStatus by remember { mutableStateOf<ConnectionStatus>(ConnectionStatus.Idle) }
-    val connectionManager = remember { GamepadConnectionManager(context, client) }
+    val connectionManager = remember { GamepadConnectionManager(context, client, storage) }
 
-    fun startAutoConnect(pin: String) {
-        connectionManager.startAutoConnect(
-            pin = pin,
+    fun startDiscovery() {
+        connectionManager.startDiscovery(
+            onFound = { server, pin ->
+                if (pin != null) {
+                    connectionManager.connect(server, pin) { connectionStatus = it }
+                } else {
+                    discoveredServer = server
+                    showPinDialog = true
+                }
+            },
             onStatus = { connectionStatus = it },
             onTimeout = { if (connectionStatus is ConnectionStatus.Connecting) connectionStatus = ConnectionStatus.Idle }
         )
     }
 
     LaunchedEffect(Unit) { 
-        if (connectionStatus is ConnectionStatus.Idle) showPinDialog = true 
+        if (connectionStatus is ConnectionStatus.Idle) startDiscovery() 
     }
     
     DisposableEffect(Unit) { onDispose { connectionManager.cancelDiscovery() } }
@@ -102,7 +113,7 @@ fun GameListScreen(
                 connectionManager.cancelDiscovery()
                 client.disconnect()
                 connectionStatus = ConnectionStatus.Idle
-                showPinDialog = true 
+                startDiscovery() 
             }
         )
 
@@ -147,9 +158,9 @@ fun GameListScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    if (pinInputText.length == 4) {
+                    if (pinInputText.length == 4 && discoveredServer != null) {
                         showPinDialog = false
-                        startAutoConnect(pinInputText)
+                        connectionManager.connect(discoveredServer!!, pinInputText) { connectionStatus = it }
                     }
                 }) { Text("CONNECT", color = TextMain) }
             }

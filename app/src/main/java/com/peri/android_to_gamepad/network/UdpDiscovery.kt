@@ -14,7 +14,7 @@ import java.net.InetSocketAddress
 import java.net.SocketTimeoutException
 import java.nio.charset.StandardCharsets
 
-data class DiscoveredServer(val ip: String, val port: Int)
+data class DiscoveredServer(val ip: String, val port: Int, val name: String)
 
 class UdpDiscovery(private val context: Context) {
     companion object {
@@ -77,10 +77,11 @@ class UdpDiscovery(private val context: Context) {
             if (!buf.startsWith(prefixBytes, packet.length)) continue
 
             val ip = packet.address?.hostAddress ?: continue
+            val name = packet.address?.hostName ?: "Unknown Device"
             val port = String(buf, prefixBytes.size, packet.length - prefixBytes.size, StandardCharsets.UTF_8)
                 .trim().toIntOrNull() ?: continue
 
-            return DiscoveredServer(ip, port)
+            return DiscoveredServer(ip, port, name)
         }
     }
 
