@@ -34,11 +34,14 @@ class GamepadClient {
 
     init {
         scope.launch {
+            val buffer = StringBuilder()
             for (command in commandQueue) {
                 if (connectionStatus != ConnectionStatus.Authenticated && !command.startsWith("AUTH:")) continue
                 try {
                     outputStream?.write((command + "\n").toByteArray(StandardCharsets.US_ASCII))
-                    outputStream?.flush()
+                    if (commandQueue.isEmpty) {
+                        outputStream?.flush()
+                    }
                 } catch (_: Exception) {}
             }
         }

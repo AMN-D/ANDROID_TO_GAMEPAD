@@ -90,9 +90,7 @@ fun CustomLayoutScreen(client: GamepadClient, initialPreset: String = "Default",
                 val yPx = with(density) { parts.getOrNull(2)?.toFloatOrNull()?.dp?.toPx() ?: 0f }
                 
                 // Format detection:
-                // New Format (Size 9+): type,x,y,w,h,isRight,bs,sp,isHorizontal
-                // Legacy Format (Size 9): type,x,y,w,h,isLocked,isRight,bs,sp
-                // Standard Format (Size 8): type,x,y,w,h,isRight,bs,sp
+                // New Format: type,x,y,w,h,isRight,bs,sp,isHorizontal
                 
                 val part8IsBool = parts.getOrNull(8)?.let { it == "true" || it == "false" } ?: false
                 val isNewFormat = parts.size >= 9 && part8IsBool
