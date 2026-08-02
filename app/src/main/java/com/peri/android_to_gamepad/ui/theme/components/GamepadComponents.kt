@@ -150,27 +150,116 @@ fun PaddleVisual(label: String, isEditing: Boolean = false) {
 }
 
 @Composable
-fun CameraZone(modifier: Modifier = Modifier, sensitivity: Float = 0.200f, isEditing: Boolean = false, onUpdate: (x: Float, y: Float) -> Unit) {
+fun CameraZone(
+    modifier: Modifier = Modifier,
+    sensitivity: Float = 1.0f,
+    smoothing: Float = 0.15f,
+    blend: Float = 0f,
+    maxExpectedDelta: Float = 60f,
+    isEditing: Boolean = false,
+    onClickDown: (() -> Unit)? = null,
+    onClickUp: (() -> Unit)? = null,
+    onUpdate: (x: Float, y: Float) -> Unit
+) {
+    var smoothedX by remember { mutableStateOf(0f) }
+    var smoothedY by remember { mutableStateOf(0f) }
+    val density = LocalDensity.current
+
     Box(modifier = modifier.pointerInput(isEditing) {
         if (isEditing) return@pointerInput
+        val deadzone = 0.1f // Further reduced from 0.2f
+        val clickThreshold = 14.dp.toPx()
+
         awaitEachGesture {
             val down = awaitFirstDown(true); down.consume(); onUpdate(0f, 0f)
+            val startTime = System.currentTimeMillis()
+            val startPos = down.position
+            var movedFar = false
+            var clickTriggered = false
+            smoothedX = 0f
+            smoothedY = 0f
+
             while (true) {
                 val event = awaitPointerEvent()
                 val change = event.changes.firstOrNull { it.id == down.id } ?: break
                 if (!change.pressed) break
-                val outX = ((change.position.x - change.previousPosition.x) * sensitivity).coerceIn(-1f, 1f)
-                val outY = ((change.position.y - change.previousPosition.y) * sensitivity).coerceIn(-1f, 1f)
-                if (abs(outX) > DELTA_THRESHOLD || abs(outY) > DELTA_THRESHOLD) onUpdate(outX, outY)
+
+                val dt = (change.uptimeMillis - change.previousUptimeMillis).coerceAtLeast(1L)
+                val rawDx = (change.position.x - change.previousPosition.x)
+                val rawDy = (change.position.y - change.previousPosition.y)
+                
+                if (hypot(change.position.x - startPos.x, change.position.y - startPos.y) > clickThreshold) movedFar = true
+                
+                // Trigger click down if held still for 80ms
+                if (!movedFar && !clickTriggered && (System.currentTimeMillis() - startTime) > 80) {
+                    clickTriggered = true
+                    onClickDown?.invoke()
+                }
+
+                // 1. Deadzone on raw delta (noise reduction)
+                val dx = if (abs(rawDx) < deadzone) 0f else rawDx
+                val dy = if (abs(rawDy) < deadzone) 0f else rawDy
+                
+                // 2. Sample-rate normalization (Velocity-based)
+                val rateScale = 16.6f / dt
+                val normDx = dx * rateScale
+                val normDy = dy * rateScale
+                
+                // 3. Low-pass filter (EMA) to damp jitter
+                smoothedX = (smoothedX * smoothing) + (normDx * (1f - smoothing))
+                smoothedY = (smoothedY * smoothing) + (normDy * (1f - smoothing))
+                
+                // 4. Response curve
+                val mag = hypot(smoothedX, smoothedY)
+                if (mag > 0.01f) { // Lowered from 0.02f
+                    val magNorm = (mag / maxExpectedDelta).coerceIn(0f, 1f)
+                    // (1-blend)*linear + blend*cubic
+                    var magCurved = (1f - blend) * magNorm + blend * (magNorm * magNorm * magNorm)
+                    
+                    // Snap to 1.0
+                    if (magCurved > 0.98f) magCurved = 1f
+                    
+                    // 5. Soft clamp / final gain
+                    val finalMag = (magCurved * sensitivity * 8f).coerceIn(0f, 1f) // Increased base multiplier to 8f
+                    
+                    val outX = (smoothedX / mag) * finalMag
+                    val outY = (smoothedY / mag) * finalMag
+                    
+                    if (abs(outX) > 0.001f || abs(outY) > 0.001f) { // Lowered threshold significantly
+                        onUpdate(outX, outY)
+                    }
+                } else {
+                    onUpdate(0f, 0f)
+                }
+                
                 change.consume()
             }
+            
+            if (clickTriggered) {
+                onClickUp?.invoke()
+            } else if (!movedFar && (System.currentTimeMillis() - startTime) < 500) {
+                // Quick tap
+                onClickDown?.invoke()
+                onClickUp?.invoke()
+            }
+
             onUpdate(0f, 0f)
         }
     })
 }
 
 @Composable
-fun JoystickZone(modifier: Modifier = Modifier, baseRadiusFraction: Float = 0.38f, thumbSizeRatio: Float = 0.42f, restPaddingRatio: Float = 0.25f, isRightSide: Boolean = false, isEditing: Boolean = false, onUpdate: (x: Float, y: Float) -> Unit) {
+fun JoystickZone(
+    modifier: Modifier = Modifier,
+    baseRadiusFraction: Float = 0.38f,
+    thumbSizeRatio: Float = 0.42f,
+    restPaddingRatio: Float = 0.25f,
+    isRightSide: Boolean = false,
+    isEditing: Boolean = false,
+    onClickDown: (() -> Unit)? = null,
+    onClickUp: (() -> Unit)? = null,
+    onUpdate: (x: Float, y: Float) -> Unit
+) {
     var zoneSize by remember { mutableStateOf(IntSize.Zero) }
     var baseCenter by remember { mutableStateOf<Offset?>(null) }
     var thumbOffset by remember { mutableStateOf(Offset.Zero) }
@@ -178,6 +267,8 @@ fun JoystickZone(modifier: Modifier = Modifier, baseRadiusFraction: Float = 0.38
 
     Box(modifier = modifier.onSizeChanged { zoneSize = it }.pointerInput(isEditing) {
         if (isEditing) return@pointerInput
+        val clickThreshold = 14.dp.toPx()
+        
         awaitEachGesture {
             val size = zoneSize
             if (size.width == 0 || size.height == 0) return@awaitEachGesture
@@ -185,22 +276,50 @@ fun JoystickZone(modifier: Modifier = Modifier, baseRadiusFraction: Float = 0.38
             val thumbRadiusPx = baseRadiusPx * thumbSizeRatio
             val maxDragPx = baseRadiusPx - thumbRadiusPx
             val down = awaitFirstDown(true)
+            val startTime = System.currentTimeMillis()
+            val startPos = down.position
+            
             val clampedCenter = Offset(down.position.x.coerceIn(baseRadiusPx, size.width - baseRadiusPx), down.position.y.coerceIn(baseRadiusPx, size.height - baseRadiusPx))
             baseCenter = clampedCenter; thumbOffset = Offset.Zero; onUpdate(0f, 0f)
+            
             var lastX = 0f; var lastY = 0f
+            var movedFar = false
+            var clickTriggered = false
+            
             while (true) {
                 val event = awaitPointerEvent()
                 val change = event.changes.firstOrNull { it.id == down.id } ?: break
                 if (!change.pressed) break
+                
                 val dx = change.position.x - clampedCenter.x; val dy = change.position.y - clampedCenter.y
-                val dist = hypot(dx, dy)
-                val cx = if (dist > maxDragPx) dx * (maxDragPx / dist) else dx
-                val cy = if (dist > maxDragPx) dy * (maxDragPx / dist) else dy
+                val distFromCenter = hypot(dx, dy)
+                
+                // Track meaningful movement for click detection
+                val distFromStart = hypot(change.position.x - startPos.x, change.position.y - startPos.y)
+                if (distFromStart > clickThreshold) movedFar = true
+                
+                // Trigger click down if held still for 80ms
+                if (!movedFar && !clickTriggered && (System.currentTimeMillis() - startTime) > 80) {
+                    clickTriggered = true
+                    onClickDown?.invoke()
+                }
+
+                val cx = if (distFromCenter > maxDragPx) dx * (maxDragPx / distFromCenter) else dx
+                val cy = if (distFromCenter > maxDragPx) dy * (maxDragPx / distFromCenter) else dy
                 thumbOffset = Offset(cx, cy)
                 val (outX, outY) = applyStickCurve(cx / maxDragPx, cy / maxDragPx)
                 if (abs(outX - lastX) > DELTA_THRESHOLD || abs(outY - lastY) > DELTA_THRESHOLD) { onUpdate(outX, outY); lastX = outX; lastY = outY }
                 change.consume()
             }
+            
+            if (clickTriggered) {
+                onClickUp?.invoke()
+            } else if (!movedFar && (System.currentTimeMillis() - startTime) < 500) {
+                // Quick tap without triggering the 80ms hold
+                onClickDown?.invoke()
+                onClickUp?.invoke()
+            }
+
             baseCenter = null; thumbOffset = Offset.Zero; onUpdate(0f, 0f)
         }
     }) {
@@ -398,6 +517,65 @@ fun AnalogSlider(
             }
     ) {
         AnalogSliderVisual(label = label, value = sliderValue, isHorizontal = isHorizontal, modifier = Modifier.fillMaxSize(), isEditing = isEditing)
+    }
+}
+
+/**
+ * Logic for double-tap-to-toggle or double-tap-to-hold with haptics.
+ * Optimized for "Stick Click" behavior (L3/R3).
+ */
+class StickClickHandler(
+    private val view: android.view.View,
+    private val onTrigger: (Boolean) -> Unit,
+    private val doubleTapWindow: Long = 300L,
+    private val holdThreshold: Long = 400L
+) {
+    private var lastTapTime = 0L
+    private var isToggled = false
+    private var isDoubleTapping = false
+    private var downTime = 0L
+
+    fun handlePress() {
+        val now = System.currentTimeMillis()
+        downTime = now
+        // Haptic on every press
+        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING)
+
+        if (now - lastTapTime < doubleTapWindow) {
+            isDoubleTapping = true
+            onTrigger(true)
+        } else {
+            isDoubleTapping = false
+        }
+    }
+
+    fun handleRelease() {
+        val now = System.currentTimeMillis()
+        if (isDoubleTapping) {
+            if (now - downTime < holdThreshold) {
+                // Quick release -> Toggle state
+                isToggled = !isToggled
+                if (!isToggled) onTrigger(false)
+            } else {
+                // Long hold -> Release immediately (no toggle)
+                onTrigger(false)
+                isToggled = false
+            }
+            lastTapTime = 0 
+        } else {
+            if (now - downTime < doubleTapWindow) {
+                lastTapTime = now
+            }
+            if (!isToggled) onTrigger(false)
+        }
+    }
+    
+    fun reset() {
+        if (isToggled) {
+            isToggled = false
+            onTrigger(false)
+        }
+        lastTapTime = 0
     }
 }
 

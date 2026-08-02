@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import com.peri.android_to_gamepad.R
 import com.peri.android_to_gamepad.layouts.GenshinGamepadScreen
+import com.peri.android_to_gamepad.layouts.MinecraftGamepadScreen
 import com.peri.android_to_gamepad.network.GamepadClient
 import com.peri.android_to_gamepad.ui.theme.screens.CustomLayoutPickerScreen
 
@@ -21,6 +22,12 @@ val GameProfiles = listOf(
         name = "Genshin Impact",
         iconRes = R.drawable.genshin_thumb,
         layout = { client, onBack -> GenshinGamepadScreen(client, onBack) }
+    ),
+    GameProfile(
+        id = "minecraft",
+        name = "Minecraft",
+        iconRes = R.drawable.minecraft,
+        layout = { client, onBack -> MinecraftGamepadScreen(client, onBack) }
     ),
     GameProfile(
         id = "custom",

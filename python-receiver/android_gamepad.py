@@ -48,7 +48,7 @@ def handle(conn, addr):
         return
 
     print(f"[P{pid}] Connected: {addr}")
-    gp = UInput(CAPS, name=f'AGP-P{pid}', vendor=0x045e, product=0x028e)
+    gp = UInput(CAPS, name=f'AGP-P{pid}', vendor=0x1234, product=0xabcd)
     buf = ""
     auth = False
 
