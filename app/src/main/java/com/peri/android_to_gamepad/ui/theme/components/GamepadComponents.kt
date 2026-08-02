@@ -73,7 +73,7 @@ fun JoystickVisual(
 fun ButtonVisual(
     modifier: Modifier = Modifier,
     label: String,
-    diameter: Dp? = null,
+    diameter: Dp,
     accentColor: Color,
     fillAlpha: Float,
     borderAlpha: Float,
@@ -84,42 +84,12 @@ fun ButtonVisual(
     val bAlpha = if (isEditing) 0.6f else borderAlpha
     val fAlpha = if (isEditing) 0.2f else fillAlpha
     val tAlpha = if (isEditing) 0.8f else textAlpha
-
-    if (diameter != null) {
-        Box(
-            modifier = modifier
-                .size(diameter)
-                .graphicsLayer { scaleX = scale; scaleY = scale }
-                .background(Color.Black.copy(fAlpha), CircleShape)
-                .border(1.5.dp, DimWhite.copy(bAlpha), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = label,
-                color = DimWhite.copy(tAlpha),
-                fontSize = (diameter.value * 0.34f).sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    } else {
-        BoxWithConstraints(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            val resolved = minOf(maxWidth, maxHeight)
-            Box(
-                modifier = Modifier
-                    .size(resolved)
-                    .graphicsLayer { scaleX = scale; scaleY = scale }
-                    .background(Color.Black.copy(fAlpha), CircleShape)
-                    .border(1.5.dp, DimWhite.copy(bAlpha), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = label,
-                    color = DimWhite.copy(tAlpha),
-                    fontSize = (resolved.value * 0.34f).sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+    
+    Box(
+        modifier = modifier.size(diameter).graphicsLayer { scaleX = scale; scaleY = scale }.background(Color.Black.copy(fAlpha), CircleShape).border(1.5.dp, DimWhite.copy(bAlpha), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = label, color = DimWhite.copy(tAlpha), fontSize = (diameter.value * 0.34f).sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -254,25 +224,13 @@ fun JoystickZone(modifier: Modifier = Modifier, baseRadiusFraction: Float = 0.38
 }
 
 @Composable
-fun GamepadButton(
-    label: String,
-    onDown: () -> Unit,
-    onUp: () -> Unit,
-    accentColor: Color = Color.White,
-    diameter: Dp? = null,
-    onUpdate: ((x: Float, y: Float) -> Unit)? = null,
-    maxDragDp: Dp = 80.dp,
-    isEditing: Boolean = false,
-    modifier: Modifier = Modifier
-) {
+fun GamepadButton(label: String, onDown: () -> Unit, onUp: () -> Unit, accentColor: Color = Color.White, diameter: Dp = 58.dp, onUpdate: ((x: Float, y: Float) -> Unit)? = null, maxDragDp: Dp = 80.dp, isEditing: Boolean = false, modifier: Modifier = Modifier) {
     var pressed by remember { mutableStateOf(false) }
     val fillAlpha by animateFloatAsState(if (pressed) 0.35f else 0.10f, label = "fA")
     val borderAlpha by animateFloatAsState(if (pressed) 0.60f else 0.25f, label = "bA")
     val scale by animateFloatAsState(if (pressed) 0.91f else 1f, spring(stiffness = 8000f), label = "s")
-    val view = LocalView.current
-    val density = LocalDensity.current
-    val hapticSize = diameter ?: 58.dp
-    val haptic = if (hapticSize > 70.dp) HapticFeedbackConstants.VIRTUAL_KEY else HapticFeedbackConstants.KEYBOARD_TAP
+    val view = LocalView.current; val density = LocalDensity.current
+    val haptic = if (diameter > 70.dp) HapticFeedbackConstants.VIRTUAL_KEY else HapticFeedbackConstants.KEYBOARD_TAP
 
     ButtonVisual(
         modifier = modifier.pointerInput(onUpdate, isEditing) {
@@ -299,14 +257,7 @@ fun GamepadButton(
                 pressed = false; onUp()
             }
         },
-        label = label,
-        diameter = diameter,
-        accentColor = DimWhite,
-        fillAlpha = fillAlpha,
-        borderAlpha = borderAlpha,
-        scale = scale,
-        textAlpha = if (pressed) 1f else 0.4f,
-        isEditing = isEditing
+        label = label, diameter = diameter, accentColor = DimWhite, fillAlpha = fillAlpha, borderAlpha = borderAlpha, scale = scale, textAlpha = if (pressed) 1f else 0.4f, isEditing = isEditing
     )
 }
 
@@ -346,13 +297,8 @@ fun SwipeDPad(modifier: Modifier = Modifier, swipeThresholdDp: Dp = 18.dp, idleB
 }
 
 @Composable
-fun TraditionalDPad(
-    modifier: Modifier = Modifier,
-    buttonSize: Dp = 60.dp,
-    spacing: Dp = 50.dp,
-    isEditing: Boolean = false,
-    onDirectionChange: (x: Int, y: Int) -> Unit
-) {
+fun TraditionalDPad(modifier: Modifier = Modifier, buttonSize: Dp = 60.dp, spacing: Dp = 50.dp, isEditing: Boolean = false, onDirectionChange: (x: Int, y: Int) -> Unit) {
+    val density = LocalDensity.current
     var currentX by remember { mutableIntStateOf(0) }
     var currentY by remember { mutableIntStateOf(0) }
 
@@ -367,45 +313,12 @@ fun TraditionalDPad(
         onDirectionChange(currentX, currentY)
     }
 
-    BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
-        val maxArm = minOf(maxWidth, maxHeight)
-        val resolvedButton = minOf(buttonSize, maxArm * 0.42f)
-        val maxSpacing = ((maxArm - resolvedButton) / 2f).coerceAtLeast(0.dp)
-        val resolvedSpacing = minOf(spacing, maxSpacing)
-        val offsetPx = with(LocalDensity.current) { resolvedSpacing.toPx() }
-
-        GamepadButton(
-            label = "↑",
-            onDown = { updateDirection(0, -1, true) },
-            onUp = { updateDirection(0, -1, false) },
-            diameter = resolvedButton,
-            isEditing = isEditing,
-            modifier = Modifier.offset { IntOffset(0, -offsetPx.roundToInt()) }
-        )
-        GamepadButton(
-            label = "↓",
-            onDown = { updateDirection(0, 1, true) },
-            onUp = { updateDirection(0, 1, false) },
-            diameter = resolvedButton,
-            isEditing = isEditing,
-            modifier = Modifier.offset { IntOffset(0, offsetPx.roundToInt()) }
-        )
-        GamepadButton(
-            label = "←",
-            onDown = { updateDirection(-1, 0, true) },
-            onUp = { updateDirection(-1, 0, false) },
-            diameter = resolvedButton,
-            isEditing = isEditing,
-            modifier = Modifier.offset { IntOffset(-offsetPx.roundToInt(), 0) }
-        )
-        GamepadButton(
-            label = "→",
-            onDown = { updateDirection(1, 0, true) },
-            onUp = { updateDirection(1, 0, false) },
-            diameter = resolvedButton,
-            isEditing = isEditing,
-            modifier = Modifier.offset { IntOffset(offsetPx.roundToInt(), 0) }
-        )
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        val offsetPx = with(density) { spacing.toPx() }
+        GamepadButton(label = "↑", onDown = { updateDirection(0, -1, true) }, onUp = { updateDirection(0, -1, false) }, diameter = buttonSize, isEditing = isEditing, modifier = Modifier.offset { IntOffset(0, -offsetPx.roundToInt()) })
+        GamepadButton(label = "↓", onDown = { updateDirection(0, 1, true) }, onUp = { updateDirection(0, 1, false) }, diameter = buttonSize, isEditing = isEditing, modifier = Modifier.offset { IntOffset(0, offsetPx.roundToInt()) })
+        GamepadButton(label = "←", onDown = { updateDirection(-1, 0, true) }, onUp = { updateDirection(-1, 0, false) }, diameter = buttonSize, isEditing = isEditing, modifier = Modifier.offset { IntOffset(-offsetPx.roundToInt(), 0) })
+        GamepadButton(label = "→", onDown = { updateDirection(1, 0, true) }, onUp = { updateDirection(1, 0, false) }, diameter = buttonSize, isEditing = isEditing, modifier = Modifier.offset { IntOffset(offsetPx.roundToInt(), 0) })
     }
 }
 
